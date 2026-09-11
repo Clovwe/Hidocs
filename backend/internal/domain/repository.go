@@ -8,8 +8,10 @@ import (
 
 type UserRepository interface {
 	Create(ctx context.Context, user *User) error
+	CreateBatch(ctx context.Context, users []User) error
 	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
 	GetByEmail(ctx context.Context, email string) (*User, error)
+	GetExistingEmails(ctx context.Context, emails []string) (map[string]bool, error)
 	Update(ctx context.Context, user *User) error
 	Delete(ctx context.Context, id uuid.UUID) error
 	ListAll(ctx context.Context, offset, limit int) ([]User, int64, error)
@@ -25,6 +27,7 @@ type FormRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*Form, error)
 	GetByCustomURL(ctx context.Context, customURL string) (*Form, error)
 	GetByUserID(ctx context.Context, userID uuid.UUID, status FormStatus, category string) ([]Form, error)
+	GetByUserIDWithCounts(ctx context.Context, userID uuid.UUID, status FormStatus, category string) ([]FormWithCount, error)
 	GetCategoriesByUserID(ctx context.Context, userID uuid.UUID) ([]string, error)
 	Update(ctx context.Context, form *Form) error
 	Delete(ctx context.Context, id uuid.UUID) error
@@ -64,6 +67,7 @@ type ResponseRepository interface {
 	
 	// Autosave & Incremental Answers
 	UpsertAnswer(ctx context.Context, answer *ResponseAnswer) error
+	UpsertAnswersBatch(ctx context.Context, answers []ResponseAnswer) error
 	
 	// Live Proctoring, Telemetry & Creator Restart
 	UpdateTelemetry(ctx context.Context, responseID uuid.UUID, eventType string, eventMessage *string, currentQuestionIdx int, metadata *string) error

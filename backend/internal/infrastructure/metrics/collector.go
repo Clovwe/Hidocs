@@ -24,17 +24,18 @@ type MetricsCollector struct {
 	mu sync.RWMutex
 
 	// Counters
-	activeRequests    int64
-	totalRequests     uint64
-	totalSubmissions  uint64
-	submissionsToday  uint64
-	status2xx         uint64
-	status4xx         uint64
-	status5xx         uint64
+	activeRequests   int64
+	totalRequests    uint64
+	totalSubmissions uint64
+	submissionsToday uint64
+	status2xx        uint64
+	status4xx        uint64
+	status5xx        uint64
 
-	// Sliding Latency Sample Buffer (max 1000)
-	latencies    []float64
-	maxSamples   int
+	// Lock-Free Circular Ring Buffer for Latencies (Fixed 1000 samples)
+	latencyRing  [1000]float64
+	latencyIndex uint64
+	latencyCount uint64
 
 	// Sliding Active IPs (Active Users in last 60s)
 	activeIPs map[string]time.Time
@@ -46,17 +47,17 @@ type MetricsCollector struct {
 	history []dto.TimeSeriesPoint
 
 	// WebSocket Hub
-	upgrader    websocket.Upgrader
-	clients     map[*websocket.Conn]bool
-	broadcast   chan []byte
-	register    chan *websocket.Conn
-	unregister  chan *websocket.Conn
+	upgrader   websocket.Upgrader
+	clients    map[*websocket.Conn]bool
+	broadcast  chan []byte
+	register   chan *websocket.Conn
+	unregister chan *websocket.Conn
 
-	lastTickTime  time.Time
-	lastReqCount  uint64
-	lastSubCount  uint64
-	currentRPS    float64
-	currentSubPM  int64
+	lastTickTime time.Time
+	lastReqCount uint64
+	lastSubCount uint64
+	currentRPS   float64
+	currentSubPM int64
 }
 
 var globalCollector *MetricsCollector
@@ -65,8 +66,6 @@ var once sync.Once
 func GetCollector() *MetricsCollector {
 	once.Do(func() {
 		globalCollector = &MetricsCollector{
-			maxSamples:   1000,
-			latencies:    make([]float64, 0, 1000),
 			activeIPs:    make(map[string]time.Time),
 			formSessions: make(map[string]map[string]time.Time),
 			history:      make([]dto.TimeSeriesPoint, 0, 120),
@@ -101,27 +100,27 @@ func (c *MetricsCollector) RecordRequest(ip, path string, statusCode int, durati
 		atomic.AddUint64(&c.status5xx, 1)
 	}
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	// Track Active IP (60s TTL)
-	now := time.Now()
-	if ip != "" {
-		c.activeIPs[ip] = now.Add(60 * time.Second)
+	// 1. Lock-free latency recording in circular ring buffer
+	idx := atomic.AddUint64(&c.latencyIndex, 1) - 1
+	c.latencyRing[idx%1000] = durationMS
+	if atomic.LoadUint64(&c.latencyCount) < 1000 {
+		atomic.AddUint64(&c.latencyCount, 1)
 	}
 
-	// Record latency sample
-	if len(c.latencies) >= c.maxSamples {
-		c.latencies = c.latencies[1:]
-	}
-	c.latencies = append(c.latencies, durationMS)
-
-	// Form session & submission tracking
-	if formID != "" {
-		if _, exists := c.formSessions[formID]; !exists {
-			c.formSessions[formID] = make(map[string]time.Time)
+	// 2. Track active IPs and form sessions
+	if ip != "" || formID != "" {
+		c.mu.Lock()
+		now := time.Now()
+		if ip != "" {
+			c.activeIPs[ip] = now.Add(60 * time.Second)
 		}
-		c.formSessions[formID][ip] = now.Add(60 * time.Second)
+		if formID != "" {
+			if _, exists := c.formSessions[formID]; !exists {
+				c.formSessions[formID] = make(map[string]time.Time)
+			}
+			c.formSessions[formID][ip] = now.Add(60 * time.Second)
+		}
+		c.mu.Unlock()
 	}
 }
 
@@ -212,14 +211,21 @@ func (c *MetricsCollector) GetRealtimeMetrics() dto.RealtimeMetricsData {
 }
 
 func (c *MetricsCollector) calculateLatenciesUnsafe() (avg, p95, p99 float64) {
-	n := len(c.latencies)
-	if n == 0 {
+	count := atomic.LoadUint64(&c.latencyCount)
+	if count == 0 {
 		return 0.0, 0.0, 0.0
+	}
+
+	n := int(count)
+	if n > 1000 {
+		n = 1000
 	}
 
 	// Clone & Sort
 	samples := make([]float64, n)
-	copy(samples, c.latencies)
+	for i := 0; i < n; i++ {
+		samples[i] = c.latencyRing[i]
+	}
 	sort.Float64s(samples)
 
 	var sum float64

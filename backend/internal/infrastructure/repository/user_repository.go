@@ -21,6 +21,29 @@ func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
 	return r.db.WithContext(ctx).Create(user).Error
 }
 
+func (r *userRepository) CreateBatch(ctx context.Context, users []domain.User) error {
+	if len(users) == 0 {
+		return nil
+	}
+	return r.db.WithContext(ctx).CreateInBatches(&users, 100).Error
+}
+
+func (r *userRepository) GetExistingEmails(ctx context.Context, emails []string) (map[string]bool, error) {
+	if len(emails) == 0 {
+		return make(map[string]bool), nil
+	}
+	var existing []string
+	err := r.db.WithContext(ctx).Model(&domain.User{}).Where("email IN ?", emails).Pluck("email", &existing).Error
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]bool, len(existing))
+	for _, e := range existing {
+		res[e] = true
+	}
+	return res, nil
+}
+
 func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
 	var user domain.User
 	if err := r.db.WithContext(ctx).First(&user, "id = ?", id).Error; err != nil {

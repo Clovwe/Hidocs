@@ -78,6 +78,26 @@ func (r *formRepository) GetByUserID(ctx context.Context, userID uuid.UUID, stat
 	return forms, err
 }
 
+func (r *formRepository) GetByUserIDWithCounts(ctx context.Context, userID uuid.UUID, status domain.FormStatus, category string) ([]domain.FormWithCount, error) {
+	var formsWithCount []domain.FormWithCount
+	query := r.db.WithContext(ctx).
+		Table("forms").
+		Select("forms.*, COALESCE(COUNT(form_responses.id), 0) AS response_count").
+		Joins("LEFT JOIN form_responses ON form_responses.form_id = forms.id").
+		Where("forms.user_id = ?", userID).
+		Group("forms.id")
+
+	if status != "" {
+		query = query.Where("forms.status = ?", status)
+	}
+	if category != "" {
+		query = query.Where("forms.category = ?", category)
+	}
+
+	err := query.Order("forms.created_at desc").Find(&formsWithCount).Error
+	return formsWithCount, err
+}
+
 func (r *formRepository) GetCategoriesByUserID(ctx context.Context, userID uuid.UUID) ([]string, error) {
 	var categories []string
 	err := r.db.WithContext(ctx).Model(&domain.Form{}).

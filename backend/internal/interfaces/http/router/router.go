@@ -47,6 +47,16 @@ func SetupRouter(cfg *RouterConfig) *gin.Engine {
 
 	api := r.Group("/api/v1")
 	{
+		// Base /api/v1 ping info
+		api.GET("", func(c *gin.Context) {
+			c.JSON(200, gin.H{
+				"status":  "ok",
+				"app":     "HiDocs Backend API v1",
+				"version": "1.0",
+				"docs":    "/swagger/index.html",
+			})
+		})
+
 		// 1. Access Short Link / Public Forms & Live Exam Engine
 		public := api.Group("/public")
 		{

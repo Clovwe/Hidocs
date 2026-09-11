@@ -49,7 +49,10 @@ func NewPostgresDB(cfg *config.Config) (*gorm.DB, error) {
 		cfg.DBHost, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBPort, cfg.DBSSLMode,
 	)
 
-	gormConfig := &gorm.Config{}
+	gormConfig := &gorm.Config{
+		PrepareStmt:            true, // Cache prepared statements for high query throughput
+		SkipDefaultTransaction: true, // Skip auto-transactions for single write queries to reduce locks
+	}
 	switch strings.ToLower(cfg.DBLogLevel) {
 	case "silent":
 		gormConfig.Logger = logger.Default.LogMode(logger.Silent)
@@ -77,7 +80,7 @@ func NewPostgresDB(cfg *config.Config) (*gorm.DB, error) {
 	sqlDB.SetConnMaxLifetime(5 * time.Minute)
 	sqlDB.SetConnMaxIdleTime(2 * time.Minute)
 
-	log.Println("PostgreSQL connected successfully with high-concurrency pool settings")
+	log.Println("PostgreSQL connected successfully with high-concurrency pool settings and prepared statements cache")
 
 	// Run Auto Migration only if AUTO_MIGRATE is true
 	if cfg.AutoMigrate {
@@ -98,7 +101,15 @@ func NewPostgresDB(cfg *config.Config) (*gorm.DB, error) {
 		if err != nil {
 			return nil, fmt.Errorf("auto migration failed: %w", err)
 		}
-		log.Println("AutoMigration completed successfully")
+
+		// Ensure composite performance indexes
+		db.Exec("CREATE INDEX IF NOT EXISTS idx_form_responses_active_session ON form_responses(form_id, respondent_email, status);")
+		db.Exec("CREATE INDEX IF NOT EXISTS idx_form_responses_form_heartbeat ON form_responses(form_id, last_heartbeat DESC);")
+		db.Exec("CREATE INDEX IF NOT EXISTS idx_forms_user_created ON forms(user_id, created_at DESC);")
+		db.Exec("CREATE INDEX IF NOT EXISTS idx_response_answers_resp_flag ON response_answers(response_id, is_flagged);")
+		db.Exec("CREATE INDEX IF NOT EXISTS idx_proctoring_logs_resp_created ON proctoring_logs(response_id, created_at DESC);")
+
+		log.Println("AutoMigration completed successfully with performance indexes")
 	}
 
 	return db, nil

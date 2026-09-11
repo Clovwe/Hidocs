@@ -62,3 +62,8 @@ type FormSettings struct {
 	ExamToken          *string    `gorm:"type:varchar(50)" json:"exam_token,omitempty"`
 	IsTokenProtected   bool       `gorm:"type:boolean;default:false" json:"is_token_protected"`
 }
+
+type FormWithCount struct {
+	Form
+	ResponseCount int64 `json:"response_count" gorm:"column:response_count"`
+}

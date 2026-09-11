@@ -142,9 +142,11 @@ func (s *responseService) SubmitResponse(ctx context.Context, formID uuid.UUID, 
 
 		ans.ScoreGiven = &scoreGiven
 		answers = append(answers, ans)
+	}
 
-		// Upsert answer to DB
-		_ = s.responseRepo.UpsertAnswer(ctx, &ans)
+	// Bulk upsert all answers in a single high-performance query
+	if len(answers) > 0 {
+		_ = s.responseRepo.UpsertAnswersBatch(ctx, answers)
 	}
 
 	platform := req.DevicePlatform

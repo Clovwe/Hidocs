@@ -104,14 +104,15 @@ func (s *formService) GetFormByID(ctx context.Context, formID uuid.UUID) (*dto.F
 }
 
 func (s *formService) ListUserForms(ctx context.Context, userID uuid.UUID, status domain.FormStatus, category string) ([]dto.FormResponseDTO, error) {
-	forms, err := s.formRepo.GetByUserID(ctx, userID, status, category)
+	formsWithCounts, err := s.formRepo.GetByUserIDWithCounts(ctx, userID, status, category)
 	if err != nil {
 		return nil, err
 	}
 
 	var dtos []dto.FormResponseDTO
-	for _, f := range forms {
-		dtos = append(dtos, *s.mapFormToDTO(ctx, &f))
+	for _, fc := range formsWithCounts {
+		formDTO := s.mapFormToDTOWithCount(ctx, &fc.Form, fc.ResponseCount)
+		dtos = append(dtos, *formDTO)
 	}
 	return dtos, nil
 }
@@ -562,7 +563,10 @@ func (s *formService) GetFormQRCode(ctx context.Context, identifier string) (str
 
 func (s *formService) mapFormToDTO(ctx context.Context, form *domain.Form) *dto.FormResponseDTO {
 	count, _ := s.formRepo.GetFormResponseCount(ctx, form.ID)
+	return s.mapFormToDTOWithCount(ctx, form, count)
+}
 
+func (s *formService) mapFormToDTOWithCount(ctx context.Context, form *domain.Form, responseCount int64) *dto.FormResponseDTO {
 	var questionDTOs []dto.QuestionDTO
 	for _, q := range form.Questions {
 		var optDTOs []dto.OptionDTO
@@ -609,7 +613,7 @@ func (s *formService) mapFormToDTO(ctx context.Context, form *domain.Form) *dto.
 		Status:        form.Status,
 		IsTemplate:    form.IsTemplate,
 		CreatedAt:     form.CreatedAt,
-		ResponseCount: count,
+		ResponseCount: responseCount,
 		FormSettings:  form.FormSettings,
 		Questions:     questionDTOs,
 	}

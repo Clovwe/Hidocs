@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"sync"
 
 	"backend/internal/domain"
 	"github.com/google/uuid"
@@ -18,13 +19,35 @@ func NewAdminRepository(db *gorm.DB) domain.AdminRepository {
 
 func (r *adminRepository) GetDashboardStats(ctx context.Context) (*domain.AdminStats, error) {
 	var stats domain.AdminStats
+	var wg sync.WaitGroup
+	wg.Add(5)
 
-	r.db.WithContext(ctx).Model(&domain.User{}).Count(&stats.TotalUsers)
-	r.db.WithContext(ctx).Model(&domain.User{}).Where("role = ?", domain.RoleUser).Count(&stats.TotalCreators)
-	r.db.WithContext(ctx).Model(&domain.Form{}).Count(&stats.TotalForms)
-	r.db.WithContext(ctx).Model(&domain.Form{}).Where("type = ? AND status = ?", domain.TypeExam, domain.StatusActive).Count(&stats.ActiveExams)
-	r.db.WithContext(ctx).Model(&domain.FormResponse{}).Count(&stats.TotalResponses)
+	go func() {
+		defer wg.Done()
+		r.db.WithContext(ctx).Model(&domain.User{}).Count(&stats.TotalUsers)
+	}()
 
+	go func() {
+		defer wg.Done()
+		r.db.WithContext(ctx).Model(&domain.User{}).Where("role = ?", domain.RoleUser).Count(&stats.TotalCreators)
+	}()
+
+	go func() {
+		defer wg.Done()
+		r.db.WithContext(ctx).Model(&domain.Form{}).Count(&stats.TotalForms)
+	}()
+
+	go func() {
+		defer wg.Done()
+		r.db.WithContext(ctx).Model(&domain.Form{}).Where("type = ? AND status = ?", domain.TypeExam, domain.StatusActive).Count(&stats.ActiveExams)
+	}()
+
+	go func() {
+		defer wg.Done()
+		r.db.WithContext(ctx).Model(&domain.FormResponse{}).Count(&stats.TotalResponses)
+	}()
+
+	wg.Wait()
 	return &stats, nil
 }
 

@@ -26,6 +26,23 @@ func (m *mockUserRepo) Create(ctx context.Context, user *domain.User) error {
 	return nil
 }
 
+func (m *mockUserRepo) CreateBatch(ctx context.Context, users []domain.User) error {
+	for i := range users {
+		m.users[users[i].Email] = &users[i]
+	}
+	return nil
+}
+
+func (m *mockUserRepo) GetExistingEmails(ctx context.Context, emails []string) (map[string]bool, error) {
+	res := make(map[string]bool)
+	for _, e := range emails {
+		if _, ok := m.users[e]; ok {
+			res[e] = true
+		}
+	}
+	return res, nil
+}
+
 func (m *mockUserRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
 	for _, u := range m.users {
 		if u.ID == id {

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"time"
 
 	"backend/internal/domain"
 	"github.com/google/uuid"
@@ -112,8 +113,19 @@ func (r *responseRepository) UpsertAnswer(ctx context.Context, answer *domain.Re
 	return r.db.WithContext(ctx).
 		Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "response_id"}, {Name: "question_id"}},
-			DoUpdates: clause.AssignmentColumns([]string{"selected_option_id", "answer_text", "is_flagged", "match_pair_json"}),
+			DoUpdates: clause.AssignmentColumns([]string{"selected_option_id", "answer_text", "score_given", "is_flagged", "match_pair_json"}),
 		}).Create(answer).Error
+}
+
+func (r *responseRepository) UpsertAnswersBatch(ctx context.Context, answers []domain.ResponseAnswer) error {
+	if len(answers) == 0 {
+		return nil
+	}
+	return r.db.WithContext(ctx).
+		Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "response_id"}, {Name: "question_id"}},
+			DoUpdates: clause.AssignmentColumns([]string{"selected_option_id", "answer_text", "score_given", "is_flagged", "match_pair_json"}),
+		}).CreateInBatches(answers, 100).Error
 }
 
 func (r *responseRepository) UpdateTelemetry(ctx context.Context, responseID uuid.UUID, eventType string, eventMessage *string, currentQuestionIdx int, metadata *string) error {
@@ -146,50 +158,74 @@ func (r *responseRepository) UpdateTelemetry(ctx context.Context, responseID uui
 }
 
 func (r *responseRepository) GetLiveMonitoringByFormID(ctx context.Context, formID uuid.UUID) ([]domain.LiveMonitoringStudent, error) {
-	var responses []domain.FormResponse
-	err := r.db.WithContext(ctx).
-		Preload("Answers").
-		Where("form_id = ?", formID).
-		Order("last_heartbeat desc").
-		Find(&responses).Error
+	type rawLiveRow struct {
+		ResponseID           uuid.UUID             `gorm:"column:response_id"`
+		RespondentEmail      string                `gorm:"column:respondent_email"`
+		Status               domain.ResponseStatus `gorm:"column:status"`
+		CurrentQuestionIndex int                   `gorm:"column:current_question_index"`
+		TotalQuestions       int                   `gorm:"column:total_questions"`
+		AnsweredCount        int                   `gorm:"column:answered_count"`
+		FlaggedCount         int                   `gorm:"column:flagged_count"`
+		TabSwitchCount       int                   `gorm:"column:tab_switch_count"`
+		BlurCount            int                   `gorm:"column:blur_count"`
+		DevicePlatform       string                `gorm:"column:device_platform"`
+		WarningMessage       *string               `gorm:"column:warning_message"`
+		StartedAt            time.Time             `gorm:"column:started_at"`
+		LastHeartbeat        time.Time             `gorm:"column:last_heartbeat"`
+		IsSuspicious         bool                  `gorm:"column:is_suspicious"`
+	}
 
-	if err != nil {
+	var rows []rawLiveRow
+	query := `
+		SELECT 
+			r.id AS response_id,
+			r.respondent_email,
+			r.status,
+			r.current_question_index,
+			COALESCE(q_cnt.cnt, 0) AS total_questions,
+			COUNT(a.id) FILTER (WHERE a.selected_option_id IS NOT NULL OR (a.answer_text IS NOT NULL AND a.answer_text != '') OR (a.match_pair_json IS NOT NULL AND a.match_pair_json != '')) AS answered_count,
+			COUNT(a.id) FILTER (WHERE a.is_flagged = TRUE) AS flagged_count,
+			r.tab_switch_count,
+			r.blur_count,
+			r.device_platform,
+			r.warning_message,
+			r.started_at,
+			r.last_heartbeat,
+			(r.tab_switch_count >= 2 OR r.blur_count >= 3) AS is_suspicious
+		FROM form_responses r
+		LEFT JOIN response_answers a ON a.response_id = r.id
+		LEFT JOIN (
+			SELECT form_id, COUNT(*) AS cnt 
+			FROM questions 
+			WHERE form_id = ? 
+			GROUP BY form_id
+		) q_cnt ON q_cnt.form_id = r.form_id
+		WHERE r.form_id = ?
+		GROUP BY r.id, q_cnt.cnt
+		ORDER BY r.last_heartbeat DESC
+	`
+
+	if err := r.db.WithContext(ctx).Raw(query, formID, formID).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 
-	var totalQuestions int64
-	r.db.WithContext(ctx).Model(&domain.Question{}).Where("form_id = ?", formID).Count(&totalQuestions)
-
-	results := make([]domain.LiveMonitoringStudent, 0, len(responses))
-	for _, resp := range responses {
-		answeredCount := 0
-		flaggedCount := 0
-		for _, a := range resp.Answers {
-			if a.SelectedOptionID != nil || a.AnswerText != "" || (a.MatchPairJSON != nil && *a.MatchPairJSON != "") {
-				answeredCount++
-			}
-			if a.IsFlagged {
-				flaggedCount++
-			}
-		}
-
-		isSuspicious := resp.TabSwitchCount >= 2 || resp.BlurCount >= 3
-
+	results := make([]domain.LiveMonitoringStudent, 0, len(rows))
+	for _, row := range rows {
 		results = append(results, domain.LiveMonitoringStudent{
-			ResponseID:           resp.ID,
-			RespondentEmail:      resp.RespondentEmail,
-			Status:               resp.Status,
-			CurrentQuestionIndex: resp.CurrentQuestionIndex,
-			TotalQuestions:       int(totalQuestions),
-			AnsweredCount:        answeredCount,
-			FlaggedCount:         flaggedCount,
-			TabSwitchCount:       resp.TabSwitchCount,
-			BlurCount:            resp.BlurCount,
-			DevicePlatform:       resp.DevicePlatform,
-			WarningMessage:       resp.WarningMessage,
-			StartedAt:            resp.StartedAt,
-			LastHeartbeat:        resp.LastHeartbeat,
-			IsSuspicious:         isSuspicious,
+			ResponseID:           row.ResponseID,
+			RespondentEmail:      row.RespondentEmail,
+			Status:               row.Status,
+			CurrentQuestionIndex: row.CurrentQuestionIndex,
+			TotalQuestions:       row.TotalQuestions,
+			AnsweredCount:        row.AnsweredCount,
+			FlaggedCount:         row.FlaggedCount,
+			TabSwitchCount:       row.TabSwitchCount,
+			BlurCount:            row.BlurCount,
+			DevicePlatform:       row.DevicePlatform,
+			WarningMessage:       row.WarningMessage,
+			StartedAt:            row.StartedAt,
+			LastHeartbeat:        row.LastHeartbeat,
+			IsSuspicious:         row.IsSuspicious,
 		})
 	}
 
