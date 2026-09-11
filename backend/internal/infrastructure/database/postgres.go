@@ -93,6 +93,7 @@ func NewPostgresDB(cfg *config.Config) (*gorm.DB, error) {
 			&domain.QuestionOption{},
 			&domain.FormResponse{},
 			&domain.ResponseAnswer{},
+			&domain.ProctoringLog{},
 		)
 		if err != nil {
 			return nil, fmt.Errorf("auto migration failed: %w", err)

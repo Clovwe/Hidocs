@@ -6,6 +6,8 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -25,6 +27,18 @@ func NewDocxParser() *DocxParser {
 	return &DocxParser{}
 }
 
+// XML structures for word/_rels/document.xml.rels
+type relationshipsXML struct {
+	XMLName       xml.Name          `xml:"Relationships"`
+	Relationships []relationshipXML `xml:"Relationship"`
+}
+
+type relationshipXML struct {
+	ID     string `xml:"Id,attr"`
+	Type   string `xml:"Type,attr"`
+	Target string `xml:"Target,attr"`
+}
+
 // XML structures for word/document.xml parsing
 type documentXML struct {
 	XMLName xml.Name `xml:"document"`
@@ -36,11 +50,12 @@ type bodyXML struct {
 }
 
 type paragraphXML struct {
-	Runs []runXML `xml:"r"`
+	InnerXML string `xml:",innerxml"`
 }
 
-type runXML struct {
-	Text string `xml:"t"`
+type parsedParagraph struct {
+	Text     string
+	ImageURL string
 }
 
 func (p *DocxParser) ParseDocx(fileBytes []byte, formID uuid.UUID) (*ExtractedForm, error) {
@@ -49,9 +64,109 @@ func (p *DocxParser) ParseDocx(fileBytes []byte, formID uuid.UUID) (*ExtractedFo
 		return nil, fmt.Errorf("failed to open docx as zip archive: %w", err)
 	}
 
+	// 1. Parse Relationships (word/_rels/document.xml.rels)
+	relMap := make(map[string]string)
+	for _, f := range reader.File {
+		cleanName := strings.TrimPrefix(f.Name, "/")
+		if cleanName == "word/_rels/document.xml.rels" {
+			rc, err := f.Open()
+			if err == nil {
+				data, _ := io.ReadAll(rc)
+				rc.Close()
+				var rels relationshipsXML
+				if xml.Unmarshal(data, &rels) == nil {
+					for _, r := range rels.Relationships {
+						relMap[r.ID] = r.Target
+					}
+				}
+			}
+			break
+		}
+	}
+
+	// Map to access zip files quickly
+	zipFileMap := make(map[string]*zip.File)
+	for _, f := range reader.File {
+		cleanName := strings.TrimPrefix(f.Name, "/")
+		zipFileMap[f.Name] = f
+		zipFileMap[cleanName] = f
+	}
+
+	// Helper to extract image by relationship ID or target
+	embedRegex := regexp.MustCompile(`(?i)(?:r:embed|r:id|embed|id|src)="([^"]+)"`)
+	imageExts := map[string]bool{
+		".png": true, ".jpg": true, ".jpeg": true, ".gif": true,
+		".webp": true, ".bmp": true, ".svg": true, ".emf": true, ".wmf": true,
+	}
+
+	extractImageFromXML := func(rawXML string) string {
+		matches := embedRegex.FindAllStringSubmatch(rawXML, -1)
+		for _, m := range matches {
+			if len(m) < 2 {
+				continue
+			}
+			relID := m[1]
+			targetPath, exists := relMap[relID]
+			if !exists {
+				// Maybe relID is direct path
+				targetPath = relID
+			}
+
+			ext := strings.ToLower(filepath.Ext(targetPath))
+			if !imageExts[ext] {
+				continue
+			}
+
+			// Normalize target path
+			fullPath := targetPath
+			if !strings.HasPrefix(fullPath, "word/") {
+				fullPath = "word/" + strings.TrimPrefix(targetPath, "/")
+			}
+
+			zf, found := zipFileMap[fullPath]
+			if !found {
+				// Try without word/
+				zf, found = zipFileMap[strings.TrimPrefix(fullPath, "word/")]
+			}
+			if !found {
+				continue
+			}
+
+			imgRc, err := zf.Open()
+			if err != nil {
+				continue
+			}
+
+			imgBytes, err := io.ReadAll(imgRc)
+			imgRc.Close()
+			if err != nil || len(imgBytes) == 0 {
+				continue
+			}
+
+			// Save image to ./uploads/questions/
+			uploadDir := "./uploads/questions"
+			_ = os.MkdirAll(uploadDir, 0755)
+
+			if ext == "" {
+				ext = ".png"
+			}
+			fileName := fmt.Sprintf("%s%s", uuid.New().String(), ext)
+			destPath := filepath.Join(uploadDir, fileName)
+
+			if err := os.WriteFile(destPath, imgBytes, 0644); err != nil {
+				continue
+			}
+
+			return fmt.Sprintf("/uploads/questions/%s", fileName)
+		}
+		return ""
+	}
+
+	// 2. Parse word/document.xml
 	var documentFile *zip.File
 	for _, f := range reader.File {
-		if f.Name == "word/document.xml" {
+		cleanName := strings.TrimPrefix(f.Name, "/")
+		if cleanName == "word/document.xml" {
 			documentFile = f
 			break
 		}
@@ -77,47 +192,66 @@ func (p *DocxParser) ParseDocx(fileBytes []byte, formID uuid.UUID) (*ExtractedFo
 		return nil, fmt.Errorf("failed to parse document.xml: %w", err)
 	}
 
-	var lines []string
+	textTagRegex := regexp.MustCompile(`(?s)<(?:[a-zA-Z0-9_-]+:)?t(?:\s+[^>]*)?>([^<]*)</(?:[a-zA-Z0-9_-]+:)?t>`)
+
+	var paragraphs []parsedParagraph
 	for _, p := range doc.Body.Paragraphs {
 		var textBuilder strings.Builder
-		for _, r := range p.Runs {
-			textBuilder.WriteString(r.Text)
+		textMatches := textTagRegex.FindAllStringSubmatch(p.InnerXML, -1)
+		for _, tm := range textMatches {
+			if len(tm) > 1 {
+				textBuilder.WriteString(tm[1])
+			}
 		}
+
 		line := strings.TrimSpace(textBuilder.String())
-		if line != "" {
-			lines = append(lines, line)
+		imgURL := extractImageFromXML(p.InnerXML)
+
+		if line != "" || imgURL != "" {
+			paragraphs = append(paragraphs, parsedParagraph{
+				Text:     line,
+				ImageURL: imgURL,
+			})
 		}
 	}
 
-	return parseLinesToForm(lines, formID)
+	return parseParagraphsToForm(paragraphs, formID)
 }
 
 func parseLinesToForm(lines []string, formID uuid.UUID) (*ExtractedForm, error) {
+	var paragraphs []parsedParagraph
+	for _, l := range lines {
+		paragraphs = append(paragraphs, parsedParagraph{Text: l})
+	}
+	return parseParagraphsToForm(paragraphs, formID)
+}
+
+func parseParagraphsToForm(paragraphs []parsedParagraph, formID uuid.UUID) (*ExtractedForm, error) {
 	extracted := &ExtractedForm{
 		Title:       "Dokumen Soal Import Docx",
 		Description: "Form ujian diimport secara otomatis dari dokumen Word",
 		Questions:   []domain.Question{},
 	}
 
-	if len(lines) == 0 {
+	if len(paragraphs) == 0 {
 		return extracted, nil
 	}
 
 	qNumRegex := regexp.MustCompile(`(?i)^(?:(?:Soal|Question|Q)\s*#?\s*\d+[\.\):]?|\d+[\.\)]|\(\d+\)|\[\d+\])\s*(.*)`)
-	optionRegex := regexp.MustCompile(`(?i)^(\*?\s*)(?:[\(\[]?([A-Ea-e])[\.\)\]]|\b([A-Ea-e])[\.\)])\s*(.+)`)
+	optionRegex := regexp.MustCompile(`(?i)^(\*?\s*)(?:[\(\[]?([A-Ea-e])[\.\)\]]|\b([A-Ea-e])[\.\)])(?:\s*(.*))`)
 	answerKeyRegex := regexp.MustCompile(`(?i)^(?:Kunci\s*Jawaban|Kunci|Jawaban|Answer|Key)\s*[:=]?\s*[\(\[]?([A-Ea-e])[\.\)\]]?`)
 	separatorRegex := regexp.MustCompile(`^[\_\-\*\=\#\s]{3,}$`)
 
 	startIndex := 0
 
 	// Check if document starts directly with a question
-	firstIsQuestion := qNumRegex.MatchString(lines[0]) || optionRegex.MatchString(lines[0])
+	firstIsQuestion := qNumRegex.MatchString(paragraphs[0].Text) || optionRegex.MatchString(paragraphs[0].Text)
 
 	if !firstIsQuestion {
-		extracted.Title = lines[0]
+		extracted.Title = paragraphs[0].Text
 		startIndex = 1
-		if len(lines) > 1 && !qNumRegex.MatchString(lines[1]) && !optionRegex.MatchString(lines[1]) {
-			extracted.Description = lines[1]
+		if len(paragraphs) > 1 && !qNumRegex.MatchString(paragraphs[1].Text) && !optionRegex.MatchString(paragraphs[1].Text) {
+			extracted.Description = paragraphs[1].Text
 			startIndex = 2
 		}
 	}
@@ -125,13 +259,12 @@ func parseLinesToForm(lines []string, formID uuid.UUID) (*ExtractedForm, error) 
 	var currentQuestion *domain.Question
 	var currentOptions []domain.QuestionOption
 	var pendingCorrectLetter string
+	var pendingImage string
 	orderIdx := 1
 
-	for i := startIndex; i < len(lines); i++ {
-		line := strings.TrimSpace(lines[i])
-		if line == "" {
-			continue
-		}
+	for i := startIndex; i < len(paragraphs); i++ {
+		para := paragraphs[i]
+		line := strings.TrimSpace(para.Text)
 
 		// Skip separator / divider lines
 		if separatorRegex.MatchString(line) {
@@ -152,6 +285,7 @@ func parseLinesToForm(lines []string, formID uuid.UUID) (*ExtractedForm, error) 
 				FormID:       formID,
 				QuestionText: qText,
 				QuestionType: domain.TypeMultipleChoice,
+				ImgURL:       para.ImageURL,
 				IsAutoScored: true,
 				Points:       10,
 				OrderIndex:   orderIdx,
@@ -160,6 +294,7 @@ func parseLinesToForm(lines []string, formID uuid.UUID) (*ExtractedForm, error) 
 			orderIdx++
 			currentOptions = []domain.QuestionOption{}
 			pendingCorrectLetter = ""
+			pendingImage = ""
 			continue
 		}
 
@@ -183,7 +318,7 @@ func parseLinesToForm(lines []string, formID uuid.UUID) (*ExtractedForm, error) 
 			continue
 		}
 
-		// 3. Check if it's an Option line (e.g. (a) text, A. text, *A. text)
+		// 3. Check if it's an Option line (e.g. (a) text, A. text, *A. text, or standalone A.)
 		if match := optionRegex.FindStringSubmatch(line); len(match) > 0 && currentQuestion != nil {
 			prefixAsterisk := match[1]
 			optLetter := match[2]
@@ -191,6 +326,9 @@ func parseLinesToForm(lines []string, formID uuid.UUID) (*ExtractedForm, error) 
 				optLetter = match[3]
 			}
 			optText := strings.TrimSpace(match[4])
+			if optText == "" {
+				optText = fmt.Sprintf("Opsi %s", strings.ToUpper(optLetter))
+			}
 
 			lowerLine := strings.ToLower(line)
 			isCorrect := strings.Contains(prefixAsterisk, "*") ||
@@ -212,28 +350,59 @@ func parseLinesToForm(lines []string, formID uuid.UUID) (*ExtractedForm, error) 
 			optText = strings.ReplaceAll(optText, "[benar]", "")
 			optText = strings.TrimSpace(optText)
 
+			var optImg *string
+			if para.ImageURL != "" {
+				optImg = &para.ImageURL
+			} else if pendingImage != "" {
+				// Image was placed immediately above this option label
+				optImg = &pendingImage
+				if currentQuestion.ImgURL == pendingImage {
+					currentQuestion.ImgURL = ""
+				}
+				pendingImage = ""
+			}
+
 			currentOptions = append(currentOptions, domain.QuestionOption{
 				ID:         uuid.New(),
 				QuestionID: currentQuestion.ID,
 				OptionText: optText,
+				ImgURL:     optImg,
 				IsCorrect:  isCorrect,
 				OrderIndex: len(currentOptions) + 1,
 			})
 			continue
 		}
 
-		// 4. Multi-line body text for question or option
+		// 4. Multi-line body text / standalone image for question or option
 		if currentQuestion != nil {
-			if len(currentOptions) == 0 {
-				if currentQuestion.QuestionText != "" {
-					currentQuestion.QuestionText += "\n" + line
+			if para.ImageURL != "" {
+				if len(currentOptions) == 0 {
+					// Image below question before any options
+					if currentQuestion.ImgURL == "" {
+						currentQuestion.ImgURL = para.ImageURL
+					}
+					pendingImage = para.ImageURL
 				} else {
-					currentQuestion.QuestionText = line
+					// Image below the last option
+					lastIdx := len(currentOptions) - 1
+					if currentOptions[lastIdx].ImgURL == nil {
+						currentOptions[lastIdx].ImgURL = &para.ImageURL
+					}
+					pendingImage = para.ImageURL
 				}
-			} else {
-				// Append line to the last option if options already started
-				lastIdx := len(currentOptions) - 1
-				currentOptions[lastIdx].OptionText += " " + line
+			}
+
+			if line != "" {
+				if len(currentOptions) == 0 {
+					if currentQuestion.QuestionText != "" {
+						currentQuestion.QuestionText += "\n" + line
+					} else {
+						currentQuestion.QuestionText = line
+					}
+				} else {
+					lastIdx := len(currentOptions) - 1
+					currentOptions[lastIdx].OptionText += " " + line
+				}
 			}
 		}
 	}

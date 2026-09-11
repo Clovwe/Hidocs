@@ -10,6 +10,8 @@ type CreateQuestionRequest struct {
 	QuestionType domain.QuestionType   `json:"question_type" binding:"required"`
 	CodeLanguage string                `json:"code_language"`
 	ImgURL       string                `json:"img_url"`
+	AudioURL     *string               `json:"audio_url"`
+	VideoURL     *string               `json:"video_url"`
 	IsAutoScored bool                  `json:"is_auto_scored"`
 	Points       int                   `json:"points" binding:"gte=0"`
 	OrderIndex   int                   `json:"order_index"`
@@ -22,6 +24,8 @@ type UpdateQuestionRequest struct {
 	QuestionType domain.QuestionType   `json:"question_type" binding:"required"`
 	CodeLanguage string                `json:"code_language"`
 	ImgURL       string                `json:"img_url"`
+	AudioURL     *string               `json:"audio_url"`
+	VideoURL     *string               `json:"video_url"`
 	IsAutoScored bool                  `json:"is_auto_scored"`
 	Points       int                   `json:"points" binding:"gte=0"`
 	OrderIndex   int                   `json:"order_index"`
@@ -30,9 +34,14 @@ type UpdateQuestionRequest struct {
 }
 
 type CreateOptionRequest struct {
-	OptionText string `json:"option_text" binding:"required"`
-	IsCorrect  bool   `json:"is_correct"`
-	OrderIndex int    `json:"order_index"`
+	OptionText      string  `json:"option_text" binding:"required"`
+	ImgURL          *string `json:"img_url"`
+	AudioURL        *string `json:"audio_url"`
+	VideoURL        *string `json:"video_url"`
+	MatchKey        *string `json:"match_key"`
+	MatchTargetText *string `json:"match_target_text"`
+	IsCorrect       bool    `json:"is_correct"`
+	OrderIndex      int     `json:"order_index"`
 }
 
 type QuestionDTO struct {
@@ -42,6 +51,8 @@ type QuestionDTO struct {
 	QuestionType domain.QuestionType `json:"question_type"`
 	CodeLanguage string              `json:"code_language,omitempty"`
 	ImgURL       string              `json:"img_url,omitempty"`
+	AudioURL     *string             `json:"audio_url,omitempty"`
+	VideoURL     *string             `json:"video_url,omitempty"`
 	IsAutoScored bool                `json:"is_auto_scored"`
 	Points       int                 `json:"points"`
 	OrderIndex   int                 `json:"order_index"`
@@ -50,13 +61,23 @@ type QuestionDTO struct {
 }
 
 type OptionDTO struct {
-	ID         uuid.UUID `json:"id"`
-	QuestionID uuid.UUID `json:"question_id"`
-	OptionText string    `json:"option_text"`
-	IsCorrect  bool      `json:"is_correct"`
-	OrderIndex int       `json:"order_index"`
+	ID              uuid.UUID `json:"id"`
+	QuestionID      uuid.UUID `json:"question_id"`
+	OptionText      string    `json:"option_text"`
+	ImgURL          *string   `json:"img_url,omitempty"`
+	AudioURL        *string   `json:"audio_url,omitempty"`
+	VideoURL        *string   `json:"video_url,omitempty"`
+	MatchKey        *string   `json:"match_key,omitempty"`
+	MatchTargetText *string   `json:"match_target_text,omitempty"`
+	IsCorrect       bool      `json:"is_correct"`
+	OrderIndex      int       `json:"order_index"`
 }
 
 type UploadImageResponse struct {
 	ImgURL string `json:"img_url"`
+}
+
+type UploadMediaResponse struct {
+	MediaURL  string `json:"media_url"`
+	MediaType string `json:"media_type"`
 }

@@ -10,6 +10,7 @@ import (
 type CreateFormRequest struct {
 	Title       string          `json:"title" binding:"required,min=2,max=255"`
 	Description string          `json:"description"`
+	Category    string          `json:"category"`
 	Type        domain.FormType `json:"type" binding:"required,oneof=SURVEY EXAM"`
 	CustomURL   string          `json:"custom_url"`
 	IsTemplate  bool            `json:"is_template"`
@@ -18,6 +19,7 @@ type CreateFormRequest struct {
 type UpdateFormRequest struct {
 	Title       string            `json:"title" binding:"required,min=2,max=255"`
 	Description string            `json:"description"`
+	Category    string            `json:"category"`
 	Type        domain.FormType   `json:"type" binding:"required,oneof=SURVEY EXAM"`
 	CustomURL   string            `json:"custom_url"`
 	Status      domain.FormStatus `json:"status" binding:"required,oneof=DRAFT ACTIVE CLOSED"`
@@ -33,6 +35,19 @@ type UpdateFormSettingsRequest struct {
 	RandomizeOptions    bool       `json:"randomize_options"`
 	StartTime           *time.Time `json:"start_time"`
 	EndTime             *time.Time `json:"end_time"`
+	
+	// Theme & Customization
+	ThemeColor         *string    `json:"theme_color"`
+	CoverImageURL      *string    `json:"cover_image_url"`
+	LogoURL            *string    `json:"logo_url"`
+	FontFamily         *string    `json:"font_family"`
+	AllowBacktrack     *bool      `json:"allow_backtrack"`
+	ShowQuestionNumber *bool      `json:"show_question_number"`
+	FullscreenMode     *bool      `json:"fullscreen_mode"`
+	
+	// Exam Token / Passcode
+	ExamToken          *string    `json:"exam_token"`
+	IsTokenProtected   *bool      `json:"is_token_protected"`
 }
 
 type FormResponseDTO struct {
@@ -40,6 +55,7 @@ type FormResponseDTO struct {
 	UserID        uuid.UUID            `json:"user_id"`
 	Title         string               `json:"title"`
 	Description   string               `json:"description"`
+	Category      string               `json:"category"`
 	Type          domain.FormType      `json:"type"`
 	CustomURL     string               `json:"custom_url"`
 	Status        domain.FormStatus    `json:"status"`
@@ -54,6 +70,7 @@ type PublicFormDTO struct {
 	ID           uuid.UUID           `json:"id"`
 	Title        string              `json:"title"`
 	Description  string              `json:"description"`
+	Category     string              `json:"category"`
 	Type         domain.FormType     `json:"type"`
 	CustomURL    string              `json:"custom_url"`
 	Status       domain.FormStatus   `json:"status"`
@@ -71,6 +88,14 @@ type PublicFormSettings struct {
 	RandomizeOptions    bool       `json:"randomize_options"`
 	StartTime           *time.Time `json:"start_time,omitempty"`
 	EndTime             *time.Time `json:"end_time,omitempty"`
+	ThemeColor          string     `json:"theme_color"`
+	CoverImageURL       *string    `json:"cover_image_url,omitempty"`
+	LogoURL             *string    `json:"logo_url,omitempty"`
+	FontFamily          string     `json:"font_family"`
+	AllowBacktrack      bool       `json:"allow_backtrack"`
+	ShowQuestionNumber  bool       `json:"show_question_number"`
+	FullscreenMode      bool       `json:"fullscreen_mode"`
+	IsTokenProtected    bool       `json:"is_token_protected"`
 }
 
 type PublicQuestionDTO struct {
@@ -79,6 +104,8 @@ type PublicQuestionDTO struct {
 	QuestionType domain.QuestionType `json:"question_type"`
 	CodeLanguage string              `json:"code_language,omitempty"`
 	ImgURL       string              `json:"img_url,omitempty"`
+	AudioURL     *string             `json:"audio_url,omitempty"`
+	VideoURL     *string             `json:"video_url,omitempty"`
 	IsAutoScored bool                `json:"is_auto_scored"`
 	Points       int                 `json:"points"`
 	OrderIndex   int                 `json:"order_index"`
@@ -87,7 +114,23 @@ type PublicQuestionDTO struct {
 }
 
 type PublicOptionDTO struct {
-	ID         uuid.UUID `json:"id"`
-	OptionText string    `json:"option_text"`
-	OrderIndex int       `json:"order_index"`
+	ID              uuid.UUID `json:"id"`
+	OptionText      string    `json:"option_text"`
+	ImgURL          *string   `json:"img_url,omitempty"`
+	AudioURL        *string   `json:"audio_url,omitempty"`
+	VideoURL        *string   `json:"video_url,omitempty"`
+	MatchKey        *string   `json:"match_key,omitempty"`
+	MatchTargetText *string   `json:"match_target_text,omitempty"`
+	OrderIndex      int       `json:"order_index"`
+}
+
+type VerifyExamTokenRequest struct {
+	Token           string `json:"token" binding:"required"`
+	RespondentEmail string `json:"respondent_email" binding:"required,email"`
+}
+
+type VerifyExamTokenResponse struct {
+	ResponseID   uuid.UUID      `json:"response_id"`
+	Form         *PublicFormDTO `json:"form"`
+	SessionState *SessionStateDTO `json:"session_state"`
 }

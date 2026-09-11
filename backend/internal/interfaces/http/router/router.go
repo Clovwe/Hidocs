@@ -47,11 +47,18 @@ func SetupRouter(cfg *RouterConfig) *gin.Engine {
 
 	api := r.Group("/api/v1")
 	{
-		// 1. Access Short Link / Public Forms
+		// 1. Access Short Link / Public Forms & Live Exam Engine
 		public := api.Group("/public")
 		{
 			public.GET("/forms/:short_code", cfg.PublicHandler.GetPublicForm)
 			public.GET("/forms/:short_code/qr", cfg.PublicHandler.GetFormQRCode)
+			public.POST("/forms/:form_id/verify-token", cfg.PublicHandler.VerifyExamToken)
+
+			// Live Student Session, Autosave, Telemetry (Anti-Cheat)
+			public.POST("/responses/:response_id/autosave", cfg.ResponseHandler.AutosaveAnswer)
+			public.POST("/responses/:response_id/telemetry", cfg.ResponseHandler.SendTelemetry)
+			public.GET("/responses/:response_id/session", cfg.ResponseHandler.GetSessionState)
+			public.POST("/responses/:response_id/acknowledge-warning", cfg.ResponseHandler.AcknowledgeWarning)
 		}
 
 		// 2. Authentication & OTP Verification
@@ -81,6 +88,7 @@ func SetupRouter(cfg *RouterConfig) *gin.Engine {
 			forms := protected.Group("/forms")
 			{
 				forms.GET("", cfg.FormHandler.ListForms)
+				forms.GET("/categories", cfg.FormHandler.GetCategories)
 				forms.POST("", cfg.FormHandler.CreateForm)
 				forms.POST("/import-docx", cfg.FormHandler.ImportDocx)
 				forms.POST("/import-excel", cfg.FormHandler.ImportExcel)
@@ -88,6 +96,10 @@ func SetupRouter(cfg *RouterConfig) *gin.Engine {
 				forms.PUT("/:form_id", cfg.FormHandler.UpdateForm)
 				forms.DELETE("/:form_id", cfg.FormHandler.DeleteForm)
 				forms.PUT("/:form_id/settings", cfg.FormHandler.UpdateFormSettings)
+
+				// Creator Live Proctoring & Anti-Cheat Monitoring
+				forms.GET("/:form_id/live-monitoring", cfg.ResponseHandler.GetLiveMonitoring)
+				forms.POST("/:form_id/responses/:response_id/restart", cfg.ResponseHandler.RestartStudentSession)
 
 				// Questions under form
 				forms.GET("/:form_id/questions", cfg.QuestionHandler.GetQuestionsByFormID)
@@ -102,10 +114,11 @@ func SetupRouter(cfg *RouterConfig) *gin.Engine {
 			// Public Submit Endpoint (or with passcode)
 			api.POST("/forms/:form_id/submit", cfg.ResponseHandler.SubmitForm)
 
-			// 5. Questions, Options & Local Image Storage Upload
+			// 5. Questions, Options & Media Storage Upload
 			questions := protected.Group("/questions")
 			{
 				questions.POST("/upload-image", cfg.QuestionHandler.UploadImage)
+				questions.POST("/upload-media", cfg.QuestionHandler.UploadMedia)
 				questions.PUT("/:question_id", cfg.QuestionHandler.UpdateQuestion)
 				questions.DELETE("/:question_id", cfg.QuestionHandler.DeleteQuestion)
 			}

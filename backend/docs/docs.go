@@ -21,11 +21,6 @@ const docTemplate = `{
     "paths": {
         "/api/v1/admin/creators": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "produces": [
                     "application/json"
                 ],
@@ -55,14 +50,14 @@ const docTemplate = `{
                             ]
                         }
                     }
-                }
-            },
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "post": {
                 "consumes": [
                     "application/json"
                 ],
@@ -103,16 +98,16 @@ const docTemplate = `{
                             ]
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/admin/creators/{creator_id}/status": {
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/admin/creators/{creator_id}/status": {
+            "put": {
                 "consumes": [
                     "application/json"
                 ],
@@ -148,16 +143,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/response.APIResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/admin/dashboard/stats": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/admin/dashboard/stats": {
+            "get": {
                 "produces": [
                     "application/json"
                 ],
@@ -184,16 +179,16 @@ const docTemplate = `{
                             ]
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/admin/forms": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/admin/forms": {
+            "get": {
                 "produces": [
                     "application/json"
                 ],
@@ -223,16 +218,16 @@ const docTemplate = `{
                             ]
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/admin/forms/{form_id}": {
-            "delete": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/admin/forms/{form_id}": {
+            "delete": {
                 "tags": [
                     "Admin"
                 ],
@@ -253,16 +248,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/response.APIResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/admin/metrics/forms/{form_id}": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/admin/metrics/forms/{form_id}": {
+            "get": {
                 "description": "Track live active students taking a specific exam form in real-time.",
                 "produces": [
                     "application/json"
@@ -299,16 +294,16 @@ const docTemplate = `{
                             ]
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/admin/metrics/live-exams": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/admin/metrics/live-exams": {
+            "get": {
                 "description": "Monitor active exams currently in progress and distribution of students taking each exam.",
                 "produces": [
                     "application/json"
@@ -324,16 +319,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.LiveExamsResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/admin/metrics/realtime": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/admin/metrics/realtime": {
+            "get": {
                 "description": "Stream live telemetry via WebSocket or retrieve instantaneous snapshot JSON (RPS, Latency P95/P99, Active Users, Submissions).",
                 "produces": [
                     "application/json"
@@ -349,16 +344,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.RealtimeMetricsResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/admin/metrics/system": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/admin/metrics/system": {
+            "get": {
                 "description": "Monitor CPU, memory allocations, goroutines count, and database connection pool status during peak load.",
                 "produces": [
                     "application/json"
@@ -374,16 +369,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.SystemMetricsResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/admin/metrics/traffic-history": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/admin/metrics/traffic-history": {
+            "get": {
                 "description": "Retrieve traffic time-series (RPS, Latency ms, Error count) over the last 1-2 hours for Line Chart visualization.",
                 "produces": [
                     "application/json"
@@ -407,7 +402,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.TrafficHistoryResponse"
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/api/v1/auth/forgot-password": {
@@ -657,11 +657,6 @@ const docTemplate = `{
         },
         "/api/v1/forms": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "produces": [
                     "application/json"
                 ],
@@ -674,6 +669,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Filter by status (DRAFT, ACTIVE, CLOSED)",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by category (e.g. DDK, Android, Pendidikan Pancasila)",
+                        "name": "category",
                         "in": "query"
                     }
                 ],
@@ -699,14 +700,14 @@ const docTemplate = `{
                             ]
                         }
                     }
-                }
-            },
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "post": {
                 "consumes": [
                     "application/json"
                 ],
@@ -747,16 +748,55 @@ const docTemplate = `{
                             ]
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/forms/import-docx": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
+                ]
+            }
+        },
+        "/api/v1/forms/categories": {
+            "get": {
+                "produces": [
+                    "application/json"
                 ],
+                "tags": [
+                    "Forms"
+                ],
+                "summary": "Get all distinct categories for user forms",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/forms/import-docx": {
+            "post": {
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -795,16 +835,64 @@ const docTemplate = `{
                             ]
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/forms/{form_id}": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
+                ]
+            }
+        },
+        "/api/v1/forms/import-excel": {
+            "post": {
+                "consumes": [
+                    "multipart/form-data"
                 ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Forms"
+                ],
+                "summary": "Import form from Excel .xlsx or .csv file",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Excel Spreadsheet (.xlsx / .csv)",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.FormResponseDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/forms/{form_id}": {
+            "get": {
                 "produces": [
                     "application/json"
                 ],
@@ -840,14 +928,14 @@ const docTemplate = `{
                             ]
                         }
                     }
-                }
-            },
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "put": {
                 "consumes": [
                     "application/json"
                 ],
@@ -895,14 +983,14 @@ const docTemplate = `{
                             ]
                         }
                     }
-                }
-            },
-            "delete": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "delete": {
                 "tags": [
                     "Forms"
                 ],
@@ -923,16 +1011,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/response.APIResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/forms/{form_id}/analytics": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/forms/{form_id}/analytics": {
+            "get": {
                 "produces": [
                     "application/json"
                 ],
@@ -968,16 +1056,16 @@ const docTemplate = `{
                             ]
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/forms/{form_id}/export": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/forms/{form_id}/export": {
+            "get": {
                 "tags": [
                     "Responses"
                 ],
@@ -1004,16 +1092,64 @@ const docTemplate = `{
                             "type": "file"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/forms/{form_id}/questions": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
+                ]
+            }
+        },
+        "/api/v1/forms/{form_id}/live-monitoring": {
+            "get": {
+                "produces": [
+                    "application/json"
                 ],
+                "tags": [
+                    "Live Monitoring"
+                ],
+                "summary": "Creator live monitoring of active students taking the exam",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Form ID",
+                        "name": "form_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.LiveMonitoringStudentDTO"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/forms/{form_id}/questions": {
+            "get": {
                 "produces": [
                     "application/json"
                 ],
@@ -1052,14 +1188,14 @@ const docTemplate = `{
                             ]
                         }
                     }
-                }
-            },
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "post": {
                 "consumes": [
                     "application/json"
                 ],
@@ -1107,16 +1243,16 @@ const docTemplate = `{
                             ]
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/forms/{form_id}/responses": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/forms/{form_id}/responses": {
+            "get": {
                 "produces": [
                     "application/json"
                 ],
@@ -1155,16 +1291,68 @@ const docTemplate = `{
                             ]
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/forms/{form_id}/settings": {
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
+                ]
+            }
+        },
+        "/api/v1/forms/{form_id}/responses/{response_id}/restart": {
+            "post": {
+                "consumes": [
+                    "application/json"
                 ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Live Monitoring"
+                ],
+                "summary": "Creator restarts student exam attempt due to suspicious cheating behavior",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Form ID",
+                        "name": "form_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Response ID",
+                        "name": "response_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Restart Reason Payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.RestartStudentSessionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.APIResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/forms/{form_id}/settings": {
+            "put": {
                 "consumes": [
                     "application/json"
                 ],
@@ -1212,7 +1400,12 @@ const docTemplate = `{
                             ]
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/api/v1/forms/{form_id}/submit": {
@@ -1269,11 +1462,6 @@ const docTemplate = `{
         },
         "/api/v1/options/{option_id}": {
             "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "tags": [
                     "Questions"
                 ],
@@ -1292,6 +1480,63 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.APIResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/public/forms/{form_id}/verify-token": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Public"
+                ],
+                "summary": "Verify exam passcode token and start/resume exam session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Form ID",
+                        "name": "form_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Verify Token Payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.VerifyExamTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.VerifyExamTokenResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -1365,13 +1610,168 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/questions/upload-image": {
+        "/api/v1/public/responses/{response_id}/acknowledge-warning": {
             "post": {
-                "security": [
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Public"
+                ],
+                "summary": "Student acknowledges proctor warning after exam restart",
+                "parameters": [
                     {
-                        "BearerAuth": []
+                        "type": "string",
+                        "description": "Response Session ID",
+                        "name": "response_id",
+                        "in": "path",
+                        "required": true
                     }
                 ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/public/responses/{response_id}/autosave": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Public"
+                ],
+                "summary": "Autosave incremental student answer and flagged (ragu-ragu) state",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Response Session ID",
+                        "name": "response_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Autosave Payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.AutosaveAnswerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.AutosaveResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/public/responses/{response_id}/session": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Public"
+                ],
+                "summary": "Get active exam session state and questions status (answered / flagged) for navigation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Response Session ID",
+                        "name": "response_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.SessionStateDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/public/responses/{response_id}/telemetry": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Public"
+                ],
+                "summary": "Send client telemetry events (tab switch, window blur, app background, screenshot, split screen)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Response Session ID",
+                        "name": "response_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Telemetry Event Payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.TelemetryEventRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/questions/upload-image": {
+            "post": {
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -1410,16 +1810,64 @@ const docTemplate = `{
                             ]
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/questions/{question_id}": {
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
+                ]
+            }
+        },
+        "/api/v1/questions/upload-media": {
+            "post": {
+                "consumes": [
+                    "multipart/form-data"
                 ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Questions"
+                ],
+                "summary": "Upload media attachment (Image, Audio, Video) for questions and options",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Media File (PNG, JPG, MP3, WAV, MP4, WEBM)",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.UploadMediaResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/questions/{question_id}": {
+            "put": {
                 "consumes": [
                     "application/json"
                 ],
@@ -1467,14 +1915,14 @@ const docTemplate = `{
                             ]
                         }
                     }
-                }
-            },
-            "delete": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "delete": {
                 "tags": [
                     "Questions"
                 ],
@@ -1495,16 +1943,55 @@ const docTemplate = `{
                             "$ref": "#/definitions/response.APIResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/responses/{response_id}": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
+                ]
+            }
+        },
+        "/api/v1/responses/me": {
+            "get": {
+                "produces": [
+                    "application/json"
                 ],
+                "tags": [
+                    "Responses"
+                ],
+                "summary": "Get current user's own form submissions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.ResponseDetailDTO"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/responses/{response_id}": {
+            "get": {
                 "produces": [
                     "application/json"
                 ],
@@ -1540,16 +2027,16 @@ const docTemplate = `{
                             ]
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/responses/{response_id}/grade": {
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/responses/{response_id}/grade": {
+            "put": {
                 "consumes": [
                     "application/json"
                 ],
@@ -1585,16 +2072,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/response.APIResponse"
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/superadmin/create-admin": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/superadmin/create-admin": {
+            "post": {
                 "consumes": [
                     "application/json"
                 ],
@@ -1635,16 +2122,16 @@ const docTemplate = `{
                             ]
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/superadmin/list-admin": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/superadmin/list-admin": {
+            "get": {
                 "produces": [
                     "application/json"
                 ],
@@ -1674,16 +2161,16 @@ const docTemplate = `{
                             ]
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/users/me": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/users/me": {
+            "get": {
                 "produces": [
                     "application/json"
                 ],
@@ -1710,14 +2197,14 @@ const docTemplate = `{
                             ]
                         }
                     }
-                }
-            },
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "put": {
                 "consumes": [
                     "application/json"
                 ],
@@ -1758,16 +2245,16 @@ const docTemplate = `{
                             ]
                         }
                     }
-                }
-            }
-        },
-        "/api/v1/users/students/import": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/api/v1/users/students/import": {
+            "post": {
                 "consumes": [
                     "application/json"
                 ],
@@ -1796,7 +2283,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/response.APIResponse"
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         }
     },
@@ -1847,8 +2339,14 @@ const docTemplate = `{
         "domain.FormSettings": {
             "type": "object",
             "properties": {
+                "allow_backtrack": {
+                    "type": "boolean"
+                },
                 "auto_active_days": {
                     "type": "integer"
+                },
+                "cover_image_url": {
+                    "type": "string"
                 },
                 "duration_minutes": {
                     "type": "integer"
@@ -1856,8 +2354,18 @@ const docTemplate = `{
                 "end_time": {
                     "type": "string"
                 },
+                "exam_token": {
+                    "description": "Exam Gatekeeper Token",
+                    "type": "string"
+                },
+                "font_family": {
+                    "type": "string"
+                },
                 "form_id": {
                     "type": "string"
+                },
+                "fullscreen_mode": {
+                    "type": "boolean"
                 },
                 "id": {
                     "type": "string"
@@ -1868,13 +2376,26 @@ const docTemplate = `{
                 "is_one_time_submission": {
                     "type": "boolean"
                 },
+                "is_token_protected": {
+                    "type": "boolean"
+                },
+                "logo_url": {
+                    "type": "string"
+                },
                 "randomize_options": {
                     "type": "boolean"
                 },
                 "randomize_questions": {
                     "type": "boolean"
                 },
+                "show_question_number": {
+                    "type": "boolean"
+                },
                 "start_time": {
+                    "type": "string"
+                },
+                "theme_color": {
+                    "description": "Form Customization \u0026 Themes",
                     "type": "string"
                 }
             }
@@ -1942,7 +2463,8 @@ const docTemplate = `{
                 "YES_NO",
                 "MATH",
                 "CODE",
-                "IMAGE"
+                "IMAGE",
+                "MATCHING"
             ],
             "x-enum-varnames": [
                 "TypeShortText",
@@ -1954,7 +2476,8 @@ const docTemplate = `{
                 "TypeYesNo",
                 "TypeMath",
                 "TypeCode",
-                "TypeImage"
+                "TypeImage",
+                "TypeMatching"
             ]
         },
         "domain.UserRole": {
@@ -1981,6 +2504,12 @@ const docTemplate = `{
                 },
                 "is_correct": {
                     "type": "boolean"
+                },
+                "is_flagged": {
+                    "type": "boolean"
+                },
+                "match_pair_json": {
+                    "type": "string"
                 },
                 "points_earned": {
                     "type": "number"
@@ -2013,6 +2542,52 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.AutosaveAnswerRequest": {
+            "type": "object",
+            "required": [
+                "question_id"
+            ],
+            "properties": {
+                "answer_text": {
+                    "type": "string"
+                },
+                "is_flagged": {
+                    "type": "boolean"
+                },
+                "match_pairs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.MatchPairItem"
+                    }
+                },
+                "question_id": {
+                    "type": "string"
+                },
+                "selected_option_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.AutosaveResponse": {
+            "type": "object",
+            "properties": {
+                "is_flagged": {
+                    "type": "boolean"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "question_id": {
+                    "type": "string"
+                },
+                "saved_at": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
         "dto.CpuMetrics": {
             "type": "object",
             "properties": {
@@ -2031,6 +2606,9 @@ const docTemplate = `{
                 "type"
             ],
             "properties": {
+                "category": {
+                    "type": "string"
+                },
                 "custom_url": {
                     "type": "string"
                 },
@@ -2064,14 +2642,29 @@ const docTemplate = `{
                 "option_text"
             ],
             "properties": {
+                "audio_url": {
+                    "type": "string"
+                },
+                "img_url": {
+                    "type": "string"
+                },
                 "is_correct": {
                     "type": "boolean"
+                },
+                "match_key": {
+                    "type": "string"
+                },
+                "match_target_text": {
+                    "type": "string"
                 },
                 "option_text": {
                     "type": "string"
                 },
                 "order_index": {
                     "type": "integer"
+                },
+                "video_url": {
+                    "type": "string"
                 }
             }
         },
@@ -2082,6 +2675,9 @@ const docTemplate = `{
                 "question_type"
             ],
             "properties": {
+                "audio_url": {
+                    "type": "string"
+                },
                 "code_language": {
                     "type": "string"
                 },
@@ -2112,6 +2708,9 @@ const docTemplate = `{
                 },
                 "question_type": {
                     "$ref": "#/definitions/domain.QuestionType"
+                },
+                "video_url": {
+                    "type": "string"
                 }
             }
         },
@@ -2186,6 +2785,9 @@ const docTemplate = `{
         "dto.FormResponseDTO": {
             "type": "object",
             "properties": {
+                "category": {
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -2324,6 +2926,53 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.LiveMonitoringStudentDTO": {
+            "type": "object",
+            "properties": {
+                "answered_count": {
+                    "type": "integer"
+                },
+                "blur_count": {
+                    "type": "integer"
+                },
+                "current_question_index": {
+                    "type": "integer"
+                },
+                "device_platform": {
+                    "type": "string"
+                },
+                "flagged_count": {
+                    "type": "integer"
+                },
+                "is_suspicious": {
+                    "type": "boolean"
+                },
+                "last_heartbeat": {
+                    "type": "string"
+                },
+                "respondent_email": {
+                    "type": "string"
+                },
+                "response_id": {
+                    "type": "string"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "tab_switch_count": {
+                    "type": "integer"
+                },
+                "total_questions": {
+                    "type": "integer"
+                },
+                "warning_message": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.LoginRequest": {
             "type": "object",
             "required": [
@@ -2335,6 +2984,17 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.MatchPairItem": {
+            "type": "object",
+            "properties": {
+                "match_key": {
+                    "type": "string"
+                },
+                "match_target_text": {
                     "type": "string"
                 }
             }
@@ -2356,11 +3016,23 @@ const docTemplate = `{
         "dto.OptionDTO": {
             "type": "object",
             "properties": {
+                "audio_url": {
+                    "type": "string"
+                },
                 "id": {
+                    "type": "string"
+                },
+                "img_url": {
                     "type": "string"
                 },
                 "is_correct": {
                     "type": "boolean"
+                },
+                "match_key": {
+                    "type": "string"
+                },
+                "match_target_text": {
+                    "type": "string"
                 },
                 "option_text": {
                     "type": "string"
@@ -2370,12 +3042,18 @@ const docTemplate = `{
                 },
                 "question_id": {
                     "type": "string"
+                },
+                "video_url": {
+                    "type": "string"
                 }
             }
         },
         "dto.PublicFormDTO": {
             "type": "object",
             "properties": {
+                "category": {
+                    "type": "string"
+                },
                 "custom_url": {
                     "type": "string"
                 },
@@ -2411,8 +3089,14 @@ const docTemplate = `{
         "dto.PublicFormSettings": {
             "type": "object",
             "properties": {
+                "allow_backtrack": {
+                    "type": "boolean"
+                },
                 "auto_active_days": {
                     "type": "integer"
+                },
+                "cover_image_url": {
+                    "type": "string"
                 },
                 "duration_minutes": {
                     "type": "integer"
@@ -2420,11 +3104,23 @@ const docTemplate = `{
                 "end_time": {
                     "type": "string"
                 },
+                "font_family": {
+                    "type": "string"
+                },
+                "fullscreen_mode": {
+                    "type": "boolean"
+                },
                 "is_active_immediately": {
                     "type": "boolean"
                 },
                 "is_one_time_submission": {
                     "type": "boolean"
+                },
+                "is_token_protected": {
+                    "type": "boolean"
+                },
+                "logo_url": {
+                    "type": "string"
                 },
                 "randomize_options": {
                     "type": "boolean"
@@ -2432,7 +3128,13 @@ const docTemplate = `{
                 "randomize_questions": {
                     "type": "boolean"
                 },
+                "show_question_number": {
+                    "type": "boolean"
+                },
                 "start_time": {
+                    "type": "string"
+                },
+                "theme_color": {
                     "type": "string"
                 }
             }
@@ -2440,7 +3142,19 @@ const docTemplate = `{
         "dto.PublicOptionDTO": {
             "type": "object",
             "properties": {
+                "audio_url": {
+                    "type": "string"
+                },
                 "id": {
+                    "type": "string"
+                },
+                "img_url": {
+                    "type": "string"
+                },
+                "match_key": {
+                    "type": "string"
+                },
+                "match_target_text": {
                     "type": "string"
                 },
                 "option_text": {
@@ -2448,12 +3162,18 @@ const docTemplate = `{
                 },
                 "order_index": {
                     "type": "integer"
+                },
+                "video_url": {
+                    "type": "string"
                 }
             }
         },
         "dto.PublicQuestionDTO": {
             "type": "object",
             "properties": {
+                "audio_url": {
+                    "type": "string"
+                },
                 "code_language": {
                     "type": "string"
                 },
@@ -2486,12 +3206,18 @@ const docTemplate = `{
                 },
                 "question_type": {
                     "$ref": "#/definitions/domain.QuestionType"
+                },
+                "video_url": {
+                    "type": "string"
                 }
             }
         },
         "dto.QuestionDTO": {
             "type": "object",
             "properties": {
+                "audio_url": {
+                    "type": "string"
+                },
                 "code_language": {
                     "type": "string"
                 },
@@ -2527,6 +3253,9 @@ const docTemplate = `{
                 },
                 "question_type": {
                     "$ref": "#/definitions/domain.QuestionType"
+                },
+                "video_url": {
+                    "type": "string"
                 }
             }
         },
@@ -2646,6 +3375,9 @@ const docTemplate = `{
                         "$ref": "#/definitions/dto.AnswerDetailDTO"
                     }
                 },
+                "device_platform": {
+                    "type": "string"
+                },
                 "form_id": {
                     "type": "string"
                 },
@@ -2658,11 +3390,92 @@ const docTemplate = `{
                 "respondent_email": {
                     "type": "string"
                 },
+                "started_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
                 "submitted_at": {
                     "type": "string"
                 },
                 "total_score": {
                     "type": "number"
+                }
+            }
+        },
+        "dto.RestartStudentSessionRequest": {
+            "type": "object",
+            "required": [
+                "warning_message"
+            ],
+            "properties": {
+                "warning_message": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.SessionQuestionItemDTO": {
+            "type": "object",
+            "properties": {
+                "answer_text": {
+                    "type": "string"
+                },
+                "is_answered": {
+                    "type": "boolean"
+                },
+                "is_flagged": {
+                    "type": "boolean"
+                },
+                "match_pairs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.MatchPairItem"
+                    }
+                },
+                "order_index": {
+                    "type": "integer"
+                },
+                "question_id": {
+                    "type": "string"
+                },
+                "selected_option_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.SessionStateDTO": {
+            "type": "object",
+            "properties": {
+                "current_question_index": {
+                    "type": "integer"
+                },
+                "duration_minutes": {
+                    "type": "integer"
+                },
+                "form_id": {
+                    "type": "string"
+                },
+                "is_warning_acknowledged": {
+                    "type": "boolean"
+                },
+                "questions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.SessionQuestionItemDTO"
+                    }
+                },
+                "response_id": {
+                    "type": "string"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "warning_message": {
+                    "type": "string"
                 }
             }
         },
@@ -2674,6 +3487,15 @@ const docTemplate = `{
             "properties": {
                 "answer_text": {
                     "type": "string"
+                },
+                "is_flagged": {
+                    "type": "boolean"
+                },
+                "match_pairs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.MatchPairItem"
+                    }
                 },
                 "question_id": {
                     "type": "string"
@@ -2696,6 +3518,9 @@ const docTemplate = `{
                         "$ref": "#/definitions/dto.SubmitAnswerDetail"
                     }
                 },
+                "device_platform": {
+                    "type": "string"
+                },
                 "is_auto_submitted": {
                     "type": "boolean"
                 },
@@ -2703,6 +3528,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "respondent_email": {
+                    "type": "string"
+                },
+                "response_id": {
                     "type": "string"
                 }
             }
@@ -2778,6 +3606,26 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.TelemetryEventRequest": {
+            "type": "object",
+            "required": [
+                "event_type"
+            ],
+            "properties": {
+                "current_question_index": {
+                    "type": "integer"
+                },
+                "event_message": {
+                    "type": "string"
+                },
+                "event_type": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.TimeSeriesPoint": {
             "type": "object",
             "properties": {
@@ -2836,6 +3684,9 @@ const docTemplate = `{
                 "type"
             ],
             "properties": {
+                "category": {
+                    "type": "string"
+                },
                 "custom_url": {
                     "type": "string"
                 },
@@ -2878,8 +3729,14 @@ const docTemplate = `{
         "dto.UpdateFormSettingsRequest": {
             "type": "object",
             "properties": {
+                "allow_backtrack": {
+                    "type": "boolean"
+                },
                 "auto_active_days": {
                     "type": "integer"
+                },
+                "cover_image_url": {
+                    "type": "string"
                 },
                 "duration_minutes": {
                     "type": "integer"
@@ -2887,11 +3744,27 @@ const docTemplate = `{
                 "end_time": {
                     "type": "string"
                 },
+                "exam_token": {
+                    "description": "Exam Token / Passcode",
+                    "type": "string"
+                },
+                "font_family": {
+                    "type": "string"
+                },
+                "fullscreen_mode": {
+                    "type": "boolean"
+                },
                 "is_active_immediately": {
                     "type": "boolean"
                 },
                 "is_one_time_submission": {
                     "type": "boolean"
+                },
+                "is_token_protected": {
+                    "type": "boolean"
+                },
+                "logo_url": {
+                    "type": "string"
                 },
                 "randomize_options": {
                     "type": "boolean"
@@ -2899,7 +3772,14 @@ const docTemplate = `{
                 "randomize_questions": {
                     "type": "boolean"
                 },
+                "show_question_number": {
+                    "type": "boolean"
+                },
                 "start_time": {
+                    "type": "string"
+                },
+                "theme_color": {
+                    "description": "Theme \u0026 Customization",
                     "type": "string"
                 }
             }
@@ -2927,6 +3807,9 @@ const docTemplate = `{
                 "question_type"
             ],
             "properties": {
+                "audio_url": {
+                    "type": "string"
+                },
                 "code_language": {
                     "type": "string"
                 },
@@ -2957,6 +3840,9 @@ const docTemplate = `{
                 },
                 "question_type": {
                     "$ref": "#/definitions/domain.QuestionType"
+                },
+                "video_url": {
+                    "type": "string"
                 }
             }
         },
@@ -2964,6 +3850,17 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "img_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.UploadMediaResponse": {
+            "type": "object",
+            "properties": {
+                "media_type": {
+                    "type": "string"
+                },
+                "media_url": {
                     "type": "string"
                 }
             }
@@ -2991,6 +3888,35 @@ const docTemplate = `{
                 },
                 "role": {
                     "$ref": "#/definitions/domain.UserRole"
+                }
+            }
+        },
+        "dto.VerifyExamTokenRequest": {
+            "type": "object",
+            "required": [
+                "respondent_email",
+                "token"
+            ],
+            "properties": {
+                "respondent_email": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.VerifyExamTokenResponse": {
+            "type": "object",
+            "properties": {
+                "form": {
+                    "$ref": "#/definitions/dto.PublicFormDTO"
+                },
+                "response_id": {
+                    "type": "string"
+                },
+                "session_state": {
+                    "$ref": "#/definitions/dto.SessionStateDTO"
                 }
             }
         },
@@ -3035,7 +3961,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8080",
+	Host:             "",
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "HiDocs Backend API (Form & Exam Maker)",

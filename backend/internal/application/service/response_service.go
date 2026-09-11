@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"backend/internal/application/dto"
@@ -11,6 +12,12 @@ import (
 
 type ResponseService interface {
 	SubmitResponse(ctx context.Context, formID uuid.UUID, req dto.SubmitFormRequest) (*dto.SubmitResponseResult, error)
+	AutosaveAnswer(ctx context.Context, responseID uuid.UUID, req dto.AutosaveAnswerRequest) (*dto.AutosaveResponse, error)
+	SendTelemetry(ctx context.Context, responseID uuid.UUID, req dto.TelemetryEventRequest) error
+	GetSessionState(ctx context.Context, responseID uuid.UUID) (*dto.SessionStateDTO, error)
+	AcknowledgeWarning(ctx context.Context, responseID uuid.UUID) error
+	GetLiveMonitoring(ctx context.Context, userID uuid.UUID, formID uuid.UUID) ([]dto.LiveMonitoringStudentDTO, error)
+	RestartStudentSession(ctx context.Context, userID uuid.UUID, formID uuid.UUID, responseID uuid.UUID, req dto.RestartStudentSessionRequest) error
 	GetFormResponses(ctx context.Context, userID uuid.UUID, formID uuid.UUID) ([]dto.ResponseDetailDTO, error)
 	GetMySubmissions(ctx context.Context, email string) ([]dto.ResponseDetailDTO, error)
 	GetResponseByID(ctx context.Context, userID uuid.UUID, responseID uuid.UUID) (*dto.ResponseDetailDTO, error)
@@ -62,6 +69,10 @@ func (s *responseService) SubmitResponse(ctx context.Context, formID uuid.UUID, 
 	}
 
 	responseID := uuid.New()
+	if req.ResponseID != nil && *req.ResponseID != uuid.Nil {
+		responseID = *req.ResponseID
+	}
+
 	var totalScore float64 = 0
 	var answers []domain.ResponseAnswer
 
@@ -78,15 +89,25 @@ func (s *responseService) SubmitResponse(ctx context.Context, formID uuid.UUID, 
 		}
 
 		var scoreGiven float64 = 0
+		var matchPairJSON *string
+		if len(ansReq.MatchPairs) > 0 {
+			if b, err := json.Marshal(ansReq.MatchPairs); err == nil {
+				s := string(b)
+				matchPairJSON = &s
+			}
+		}
+
 		ans := domain.ResponseAnswer{
 			ID:               uuid.New(),
 			ResponseID:       responseID,
 			QuestionID:       ansReq.QuestionID,
 			SelectedOptionID: ansReq.SelectedOptionID,
 			AnswerText:       ansReq.AnswerText,
+			IsFlagged:        ansReq.IsFlagged,
+			MatchPairJSON:    matchPairJSON,
 		}
 
-		// Auto-Grading System for Multiple Choice / Dropdown
+		// 1. Auto-Grading for Multiple Choice / Dropdown / YesNo
 		if q.IsAutoScored && (q.QuestionType == domain.TypeMultipleChoice || q.QuestionType == domain.TypeDropdown || q.QuestionType == domain.TypeYesNo) && ansReq.SelectedOptionID != nil {
 			for _, opt := range q.Options {
 				if opt.ID == *ansReq.SelectedOptionID && opt.IsCorrect {
@@ -97,22 +118,60 @@ func (s *responseService) SubmitResponse(ctx context.Context, formID uuid.UUID, 
 			}
 		}
 
+		// 2. Auto-Grading for MATCHING Question Type (Proportional scoring)
+		if q.IsAutoScored && q.QuestionType == domain.TypeMatching && len(ansReq.MatchPairs) > 0 {
+			correctMatches := 0
+			totalPairs := 0
+			for _, opt := range q.Options {
+				if opt.MatchKey != nil && opt.MatchTargetText != nil && *opt.MatchKey != "" {
+					totalPairs++
+					for _, pair := range ansReq.MatchPairs {
+						if pair.MatchKey == *opt.MatchKey && pair.MatchTargetText == *opt.MatchTargetText {
+							correctMatches++
+							break
+						}
+					}
+				}
+			}
+			if totalPairs > 0 {
+				ratio := float64(correctMatches) / float64(totalPairs)
+				scoreGiven = ratio * float64(q.Points)
+				totalScore += scoreGiven
+			}
+		}
+
 		ans.ScoreGiven = &scoreGiven
 		answers = append(answers, ans)
+
+		// Upsert answer to DB
+		_ = s.responseRepo.UpsertAnswer(ctx, &ans)
 	}
 
+	platform := req.DevicePlatform
+	if platform == "" {
+		platform = "WEB"
+	}
+
+	// Update existing session or create fresh response
 	formResponse := &domain.FormResponse{
 		ID:              responseID,
 		FormID:          formID,
 		RespondentEmail: req.RespondentEmail,
+		Status:          domain.ResponseStatusSubmitted,
+		DevicePlatform:  platform,
 		TotalScore:      &totalScore,
 		IsAutoSubmitted: req.IsAutoSubmitted,
 		SubmittedAt:     time.Now(),
-		Answers:         answers,
+		LastHeartbeat:   time.Now(),
 	}
 
-	if err := s.responseRepo.CreateResponse(ctx, formResponse); err != nil {
-		return nil, err
+	if req.ResponseID != nil && *req.ResponseID != uuid.Nil {
+		_ = s.responseRepo.UpdateResponseGrade(ctx, responseID, totalScore)
+		_ = s.responseRepo.UpdateResponseStatus(ctx, responseID, domain.ResponseStatusSubmitted)
+	} else {
+		if err := s.responseRepo.CreateResponse(ctx, formResponse); err != nil {
+			return nil, err
+		}
 	}
 
 	return &dto.SubmitResponseResult{
@@ -122,6 +181,158 @@ func (s *responseService) SubmitResponse(ctx context.Context, formID uuid.UUID, 
 		SubmittedAt:     formResponse.SubmittedAt,
 		Message:         "Response submitted successfully",
 	}, nil
+}
+
+func (s *responseService) AutosaveAnswer(ctx context.Context, responseID uuid.UUID, req dto.AutosaveAnswerRequest) (*dto.AutosaveResponse, error) {
+	var matchPairJSON *string
+	if len(req.MatchPairs) > 0 {
+		if b, err := json.Marshal(req.MatchPairs); err == nil {
+			str := string(b)
+			matchPairJSON = &str
+		}
+	}
+
+	answer := &domain.ResponseAnswer{
+		ID:               uuid.New(),
+		ResponseID:       responseID,
+		QuestionID:       req.QuestionID,
+		SelectedOptionID: req.SelectedOptionID,
+		AnswerText:       req.AnswerText,
+		IsFlagged:        req.IsFlagged,
+		MatchPairJSON:    matchPairJSON,
+	}
+
+	if err := s.responseRepo.UpsertAnswer(ctx, answer); err != nil {
+		return nil, err
+	}
+
+	return &dto.AutosaveResponse{
+		Success:    true,
+		Message:    "Answer autosaved successfully",
+		QuestionID: req.QuestionID,
+		IsFlagged:  req.IsFlagged,
+		SavedAt:    time.Now(),
+	}, nil
+}
+
+func (s *responseService) SendTelemetry(ctx context.Context, responseID uuid.UUID, req dto.TelemetryEventRequest) error {
+	return s.responseRepo.UpdateTelemetry(ctx, responseID, req.EventType, req.EventMessage, req.CurrentQuestionIndex, req.Metadata)
+}
+
+func (s *responseService) GetSessionState(ctx context.Context, responseID uuid.UUID) (*dto.SessionStateDTO, error) {
+	resp, err := s.responseRepo.GetResponseByID(ctx, responseID)
+	if err != nil {
+		return nil, err
+	}
+
+	form, err := s.formRepo.GetByID(ctx, resp.FormID)
+	if err != nil {
+		return nil, err
+	}
+
+	var questions []dto.SessionQuestionItemDTO
+	for _, q := range form.Questions {
+		answered := false
+		flagged := false
+		var selectedOpt *uuid.UUID
+		var ansText string
+		var matchPairs []dto.MatchPairItem
+
+		for _, a := range resp.Answers {
+			if a.QuestionID == q.ID {
+				answered = a.SelectedOptionID != nil || a.AnswerText != "" || (a.MatchPairJSON != nil && *a.MatchPairJSON != "")
+				flagged = a.IsFlagged
+				selectedOpt = a.SelectedOptionID
+				ansText = a.AnswerText
+				if a.MatchPairJSON != nil && *a.MatchPairJSON != "" {
+					_ = json.Unmarshal([]byte(*a.MatchPairJSON), &matchPairs)
+				}
+				break
+			}
+		}
+
+		questions = append(questions, dto.SessionQuestionItemDTO{
+			QuestionID:       q.ID,
+			OrderIndex:       q.OrderIndex,
+			IsAnswered:       answered,
+			IsFlagged:        flagged,
+			SelectedOptionID: selectedOpt,
+			AnswerText:       ansText,
+			MatchPairs:       matchPairs,
+		})
+	}
+
+	var duration *int
+	if form.FormSettings != nil {
+		duration = form.FormSettings.DurationMinutes
+	}
+
+	return &dto.SessionStateDTO{
+		ResponseID:            resp.ID,
+		FormID:                resp.FormID,
+		Status:                string(resp.Status),
+		CurrentQuestionIndex:  resp.CurrentQuestionIndex,
+		WarningMessage:        resp.WarningMessage,
+		IsWarningAcknowledged: resp.IsWarningAcknowledged,
+		StartedAt:             resp.StartedAt,
+		DurationMinutes:       duration,
+		Questions:             questions,
+	}, nil
+}
+
+func (s *responseService) AcknowledgeWarning(ctx context.Context, responseID uuid.UUID) error {
+	return s.responseRepo.AcknowledgeWarning(ctx, responseID)
+}
+
+func (s *responseService) GetLiveMonitoring(ctx context.Context, userID uuid.UUID, formID uuid.UUID) ([]dto.LiveMonitoringStudentDTO, error) {
+	form, err := s.formRepo.GetByID(ctx, formID)
+	if err != nil {
+		return nil, err
+	}
+
+	if form.UserID != userID {
+		return nil, domain.ErrForbidden
+	}
+
+	students, err := s.responseRepo.GetLiveMonitoringByFormID(ctx, formID)
+	if err != nil {
+		return nil, err
+	}
+
+	var dtos []dto.LiveMonitoringStudentDTO
+	for _, st := range students {
+		dtos = append(dtos, dto.LiveMonitoringStudentDTO{
+			ResponseID:           st.ResponseID,
+			RespondentEmail:      st.RespondentEmail,
+			Status:               string(st.Status),
+			CurrentQuestionIndex: st.CurrentQuestionIndex,
+			TotalQuestions:       st.TotalQuestions,
+			AnsweredCount:        st.AnsweredCount,
+			FlaggedCount:         st.FlaggedCount,
+			TabSwitchCount:       st.TabSwitchCount,
+			BlurCount:            st.BlurCount,
+			DevicePlatform:       st.DevicePlatform,
+			WarningMessage:       st.WarningMessage,
+			StartedAt:            st.StartedAt,
+			LastHeartbeat:        st.LastHeartbeat,
+			IsSuspicious:         st.IsSuspicious,
+		})
+	}
+
+	return dtos, nil
+}
+
+func (s *responseService) RestartStudentSession(ctx context.Context, userID uuid.UUID, formID uuid.UUID, responseID uuid.UUID, req dto.RestartStudentSessionRequest) error {
+	form, err := s.formRepo.GetByID(ctx, formID)
+	if err != nil {
+		return err
+	}
+
+	if form.UserID != userID {
+		return domain.ErrForbidden
+	}
+
+	return s.responseRepo.RestartStudentResponse(ctx, responseID, req.WarningMessage)
 }
 
 func (s *responseService) GetFormResponses(ctx context.Context, userID uuid.UUID, formID uuid.UUID) ([]dto.ResponseDetailDTO, error) {
@@ -206,6 +417,8 @@ func (s *responseService) mapResponseToDTO(resp *domain.FormResponse) *dto.Respo
 			QuestionID:       a.QuestionID,
 			SelectedOptionID: a.SelectedOptionID,
 			AnswerText:       a.AnswerText,
+			IsFlagged:        a.IsFlagged,
+			MatchPairJSON:    a.MatchPairJSON,
 			ScoreGiven:       a.ScoreGiven,
 		}
 
@@ -228,8 +441,11 @@ func (s *responseService) mapResponseToDTO(resp *domain.FormResponse) *dto.Respo
 		ID:              resp.ID,
 		FormID:          resp.FormID,
 		RespondentEmail: resp.RespondentEmail,
+		Status:          string(resp.Status),
 		TotalScore:      resp.TotalScore,
 		IsAutoSubmitted: resp.IsAutoSubmitted,
+		DevicePlatform:  resp.DevicePlatform,
+		StartedAt:       resp.StartedAt,
 		SubmittedAt:     resp.SubmittedAt,
 		Answers:         answers,
 	}

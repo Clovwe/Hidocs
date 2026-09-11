@@ -30,25 +30,45 @@ definitions:
     type: object
   domain.FormSettings:
     properties:
+      allow_backtrack:
+        type: boolean
       auto_active_days:
         type: integer
+      cover_image_url:
+        type: string
       duration_minutes:
         type: integer
       end_time:
         type: string
+      exam_token:
+        description: Exam Gatekeeper Token
+        type: string
+      font_family:
+        type: string
       form_id:
         type: string
+      fullscreen_mode:
+        type: boolean
       id:
         type: string
       is_active_immediately:
         type: boolean
       is_one_time_submission:
         type: boolean
+      is_token_protected:
+        type: boolean
+      logo_url:
+        type: string
       randomize_options:
         type: boolean
       randomize_questions:
         type: boolean
+      show_question_number:
+        type: boolean
       start_time:
+        type: string
+      theme_color:
+        description: Form Customization & Themes
         type: string
     type: object
   domain.FormStatus:
@@ -99,6 +119,7 @@ definitions:
     - MATH
     - CODE
     - IMAGE
+    - MATCHING
     type: string
     x-enum-varnames:
     - TypeShortText
@@ -111,6 +132,7 @@ definitions:
     - TypeMath
     - TypeCode
     - TypeImage
+    - TypeMatching
   domain.UserRole:
     enum:
     - superadmin
@@ -129,6 +151,10 @@ definitions:
         type: string
       is_correct:
         type: boolean
+      is_flagged:
+        type: boolean
+      match_pair_json:
+        type: string
       points_earned:
         type: number
       question_id:
@@ -149,6 +175,36 @@ definitions:
       user:
         $ref: '#/definitions/dto.UserResponse'
     type: object
+  dto.AutosaveAnswerRequest:
+    properties:
+      answer_text:
+        type: string
+      is_flagged:
+        type: boolean
+      match_pairs:
+        items:
+          $ref: '#/definitions/dto.MatchPairItem'
+        type: array
+      question_id:
+        type: string
+      selected_option_id:
+        type: string
+    required:
+    - question_id
+    type: object
+  dto.AutosaveResponse:
+    properties:
+      is_flagged:
+        type: boolean
+      message:
+        type: string
+      question_id:
+        type: string
+      saved_at:
+        type: string
+      success:
+        type: boolean
+    type: object
   dto.CpuMetrics:
     properties:
       cores:
@@ -158,6 +214,8 @@ definitions:
     type: object
   dto.CreateFormRequest:
     properties:
+      category:
+        type: string
       custom_url:
         type: string
       description:
@@ -180,17 +238,29 @@ definitions:
     type: object
   dto.CreateOptionRequest:
     properties:
+      audio_url:
+        type: string
+      img_url:
+        type: string
       is_correct:
         type: boolean
+      match_key:
+        type: string
+      match_target_text:
+        type: string
       option_text:
         type: string
       order_index:
         type: integer
+      video_url:
+        type: string
     required:
     - option_text
     type: object
   dto.CreateQuestionRequest:
     properties:
+      audio_url:
+        type: string
       code_language:
         type: string
       img_url:
@@ -212,6 +282,8 @@ definitions:
         type: string
       question_type:
         $ref: '#/definitions/domain.QuestionType'
+      video_url:
+        type: string
     required:
     - question_text
     - question_type
@@ -262,6 +334,8 @@ definitions:
     type: object
   dto.FormResponseDTO:
     properties:
+      category:
+        type: string
       created_at:
         type: string
       custom_url:
@@ -352,6 +426,37 @@ definitions:
       success:
         type: boolean
     type: object
+  dto.LiveMonitoringStudentDTO:
+    properties:
+      answered_count:
+        type: integer
+      blur_count:
+        type: integer
+      current_question_index:
+        type: integer
+      device_platform:
+        type: string
+      flagged_count:
+        type: integer
+      is_suspicious:
+        type: boolean
+      last_heartbeat:
+        type: string
+      respondent_email:
+        type: string
+      response_id:
+        type: string
+      started_at:
+        type: string
+      status:
+        type: string
+      tab_switch_count:
+        type: integer
+      total_questions:
+        type: integer
+      warning_message:
+        type: string
+    type: object
   dto.LoginRequest:
     properties:
       email:
@@ -361,6 +466,13 @@ definitions:
     required:
     - email
     - password
+    type: object
+  dto.MatchPairItem:
+    properties:
+      match_key:
+        type: string
+      match_target_text:
+        type: string
     type: object
   dto.MemoryMetrics:
     properties:
@@ -373,19 +485,31 @@ definitions:
     type: object
   dto.OptionDTO:
     properties:
+      audio_url:
+        type: string
       id:
+        type: string
+      img_url:
         type: string
       is_correct:
         type: boolean
+      match_key:
+        type: string
+      match_target_text:
+        type: string
       option_text:
         type: string
       order_index:
         type: integer
       question_id:
         type: string
+      video_url:
+        type: string
     type: object
   dto.PublicFormDTO:
     properties:
+      category:
+        type: string
       custom_url:
         type: string
       description:
@@ -409,34 +533,62 @@ definitions:
     type: object
   dto.PublicFormSettings:
     properties:
+      allow_backtrack:
+        type: boolean
       auto_active_days:
         type: integer
+      cover_image_url:
+        type: string
       duration_minutes:
         type: integer
       end_time:
         type: string
+      font_family:
+        type: string
+      fullscreen_mode:
+        type: boolean
       is_active_immediately:
         type: boolean
       is_one_time_submission:
         type: boolean
+      is_token_protected:
+        type: boolean
+      logo_url:
+        type: string
       randomize_options:
         type: boolean
       randomize_questions:
         type: boolean
+      show_question_number:
+        type: boolean
       start_time:
+        type: string
+      theme_color:
         type: string
     type: object
   dto.PublicOptionDTO:
     properties:
+      audio_url:
+        type: string
       id:
+        type: string
+      img_url:
+        type: string
+      match_key:
+        type: string
+      match_target_text:
         type: string
       option_text:
         type: string
       order_index:
         type: integer
+      video_url:
+        type: string
     type: object
   dto.PublicQuestionDTO:
     properties:
+      audio_url:
+        type: string
       code_language:
         type: string
       id:
@@ -459,9 +611,13 @@ definitions:
         type: string
       question_type:
         $ref: '#/definitions/domain.QuestionType'
+      video_url:
+        type: string
     type: object
   dto.QuestionDTO:
     properties:
+      audio_url:
+        type: string
       code_language:
         type: string
       form_id:
@@ -486,6 +642,8 @@ definitions:
         type: string
       question_type:
         $ref: '#/definitions/domain.QuestionType'
+      video_url:
+        type: string
     type: object
   dto.RealtimeMetricsData:
     properties:
@@ -565,6 +723,8 @@ definitions:
         items:
           $ref: '#/definitions/dto.AnswerDetailDTO'
         type: array
+      device_platform:
+        type: string
       form_id:
         type: string
       id:
@@ -573,15 +733,74 @@ definitions:
         type: boolean
       respondent_email:
         type: string
+      started_at:
+        type: string
+      status:
+        type: string
       submitted_at:
         type: string
       total_score:
         type: number
     type: object
+  dto.RestartStudentSessionRequest:
+    properties:
+      warning_message:
+        type: string
+    required:
+    - warning_message
+    type: object
+  dto.SessionQuestionItemDTO:
+    properties:
+      answer_text:
+        type: string
+      is_answered:
+        type: boolean
+      is_flagged:
+        type: boolean
+      match_pairs:
+        items:
+          $ref: '#/definitions/dto.MatchPairItem'
+        type: array
+      order_index:
+        type: integer
+      question_id:
+        type: string
+      selected_option_id:
+        type: string
+    type: object
+  dto.SessionStateDTO:
+    properties:
+      current_question_index:
+        type: integer
+      duration_minutes:
+        type: integer
+      form_id:
+        type: string
+      is_warning_acknowledged:
+        type: boolean
+      questions:
+        items:
+          $ref: '#/definitions/dto.SessionQuestionItemDTO'
+        type: array
+      response_id:
+        type: string
+      started_at:
+        type: string
+      status:
+        type: string
+      warning_message:
+        type: string
+    type: object
   dto.SubmitAnswerDetail:
     properties:
       answer_text:
         type: string
+      is_flagged:
+        type: boolean
+      match_pairs:
+        items:
+          $ref: '#/definitions/dto.MatchPairItem'
+        type: array
       question_id:
         type: string
       selected_option_id:
@@ -595,11 +814,15 @@ definitions:
         items:
           $ref: '#/definitions/dto.SubmitAnswerDetail'
         type: array
+      device_platform:
+        type: string
       is_auto_submitted:
         type: boolean
       passcode:
         type: string
       respondent_email:
+        type: string
+      response_id:
         type: string
     required:
     - answers
@@ -651,6 +874,19 @@ definitions:
       success:
         type: boolean
     type: object
+  dto.TelemetryEventRequest:
+    properties:
+      current_question_index:
+        type: integer
+      event_message:
+        type: string
+      event_type:
+        type: string
+      metadata:
+        type: string
+    required:
+    - event_type
+    type: object
   dto.TimeSeriesPoint:
     properties:
       errors:
@@ -685,6 +921,8 @@ definitions:
     type: object
   dto.UpdateFormRequest:
     properties:
+      category:
+        type: string
       custom_url:
         type: string
       description:
@@ -715,21 +953,41 @@ definitions:
     type: object
   dto.UpdateFormSettingsRequest:
     properties:
+      allow_backtrack:
+        type: boolean
       auto_active_days:
         type: integer
+      cover_image_url:
+        type: string
       duration_minutes:
         type: integer
       end_time:
         type: string
+      exam_token:
+        description: Exam Token / Passcode
+        type: string
+      font_family:
+        type: string
+      fullscreen_mode:
+        type: boolean
       is_active_immediately:
         type: boolean
       is_one_time_submission:
         type: boolean
+      is_token_protected:
+        type: boolean
+      logo_url:
+        type: string
       randomize_options:
         type: boolean
       randomize_questions:
         type: boolean
+      show_question_number:
+        type: boolean
       start_time:
+        type: string
+      theme_color:
+        description: Theme & Customization
         type: string
     type: object
   dto.UpdateProfileRequest:
@@ -745,6 +1003,8 @@ definitions:
     type: object
   dto.UpdateQuestionRequest:
     properties:
+      audio_url:
+        type: string
       code_language:
         type: string
       img_url:
@@ -766,6 +1026,8 @@ definitions:
         type: string
       question_type:
         $ref: '#/definitions/domain.QuestionType'
+      video_url:
+        type: string
     required:
     - question_text
     - question_type
@@ -773,6 +1035,13 @@ definitions:
   dto.UploadImageResponse:
     properties:
       img_url:
+        type: string
+    type: object
+  dto.UploadMediaResponse:
+    properties:
+      media_type:
+        type: string
+      media_url:
         type: string
     type: object
   dto.UserResponse:
@@ -791,6 +1060,25 @@ definitions:
         type: string
       role:
         $ref: '#/definitions/domain.UserRole'
+    type: object
+  dto.VerifyExamTokenRequest:
+    properties:
+      respondent_email:
+        type: string
+      token:
+        type: string
+    required:
+    - respondent_email
+    - token
+    type: object
+  dto.VerifyExamTokenResponse:
+    properties:
+      form:
+        $ref: '#/definitions/dto.PublicFormDTO'
+      response_id:
+        type: string
+      session_state:
+        $ref: '#/definitions/dto.SessionStateDTO'
     type: object
   dto.VerifyOTPRequest:
     properties:
@@ -811,7 +1099,6 @@ definitions:
       success:
         type: boolean
     type: object
-host: localhost:8080
 info:
   contact:
     email: support@hidocs.id
@@ -1212,6 +1499,10 @@ paths:
         in: query
         name: status
         type: string
+      - description: Filter by category (e.g. DDK, Android, Pendidikan Pancasila)
+        in: query
+        name: category
+        type: string
       produces:
       - application/json
       responses:
@@ -1380,6 +1671,33 @@ paths:
       summary: Export form responses to Excel or CSV
       tags:
       - Responses
+  /api/v1/forms/{form_id}/live-monitoring:
+    get:
+      parameters:
+      - description: Form ID
+        in: path
+        name: form_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.LiveMonitoringStudentDTO'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Creator live monitoring of active students taking the exam
+      tags:
+      - Live Monitoring
   /api/v1/forms/{form_id}/questions:
     get:
       parameters:
@@ -1466,6 +1784,39 @@ paths:
       summary: Get all responses for a form
       tags:
       - Responses
+  /api/v1/forms/{form_id}/responses/{response_id}/restart:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Form ID
+        in: path
+        name: form_id
+        required: true
+        type: string
+      - description: Response ID
+        in: path
+        name: response_id
+        required: true
+        type: string
+      - description: Restart Reason Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RestartStudentSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Creator restarts student exam attempt due to suspicious cheating behavior
+      tags:
+      - Live Monitoring
   /api/v1/forms/{form_id}/settings:
     put:
       consumes:
@@ -1530,6 +1881,27 @@ paths:
       summary: Submit form / exam answers
       tags:
       - Responses
+  /api/v1/forms/categories:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    type: string
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get all distinct categories for user forms
+      tags:
+      - Forms
   /api/v1/forms/import-docx:
     post:
       consumes:
@@ -1557,6 +1929,33 @@ paths:
       summary: Import form from Word .docx file
       tags:
       - Forms
+  /api/v1/forms/import-excel:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: Excel Spreadsheet (.xlsx / .csv)
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.FormResponseDTO'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Import form from Excel .xlsx or .csv file
+      tags:
+      - Forms
   /api/v1/options/{option_id}:
     delete:
       parameters:
@@ -1575,6 +1974,37 @@ paths:
       summary: Delete a question option
       tags:
       - Questions
+  /api/v1/public/forms/{form_id}/verify-token:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Form ID
+        in: path
+        name: form_id
+        required: true
+        type: string
+      - description: Verify Token Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.VerifyExamTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.VerifyExamTokenResponse'
+              type: object
+      summary: Verify exam passcode token and start/resume exam session
+      tags:
+      - Public
   /api/v1/public/forms/{short_code}:
     get:
       parameters:
@@ -1614,6 +2044,106 @@ paths:
           schema:
             $ref: '#/definitions/response.APIResponse'
       summary: Generate QR Code URL for public form access
+      tags:
+      - Public
+  /api/v1/public/responses/{response_id}/acknowledge-warning:
+    post:
+      parameters:
+      - description: Response Session ID
+        in: path
+        name: response_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: Student acknowledges proctor warning after exam restart
+      tags:
+      - Public
+  /api/v1/public/responses/{response_id}/autosave:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Response Session ID
+        in: path
+        name: response_id
+        required: true
+        type: string
+      - description: Autosave Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AutosaveAnswerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.AutosaveResponse'
+              type: object
+      summary: Autosave incremental student answer and flagged (ragu-ragu) state
+      tags:
+      - Public
+  /api/v1/public/responses/{response_id}/session:
+    get:
+      parameters:
+      - description: Response Session ID
+        in: path
+        name: response_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.SessionStateDTO'
+              type: object
+      summary: Get active exam session state and questions status (answered / flagged)
+        for navigation
+      tags:
+      - Public
+  /api/v1/public/responses/{response_id}/telemetry:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Response Session ID
+        in: path
+        name: response_id
+        required: true
+        type: string
+      - description: Telemetry Event Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.TelemetryEventRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: Send client telemetry events (tab switch, window blur, app background,
+        screenshot, split screen)
       tags:
       - Public
   /api/v1/questions/{question_id}:
@@ -1693,6 +2223,33 @@ paths:
       summary: Upload image attachment for questions
       tags:
       - Questions
+  /api/v1/questions/upload-media:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: Media File (PNG, JPG, MP3, WAV, MP4, WEBM)
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.UploadMediaResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Upload media attachment (Image, Audio, Video) for questions and options
+      tags:
+      - Questions
   /api/v1/responses/{response_id}:
     get:
       parameters:
@@ -1744,6 +2301,27 @@ paths:
       security:
       - BearerAuth: []
       summary: Adjust score/grade manually for a response
+      tags:
+      - Responses
+  /api/v1/responses/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.ResponseDetailDTO'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get current user's own form submissions
       tags:
       - Responses
   /api/v1/superadmin/create-admin:

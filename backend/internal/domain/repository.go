@@ -24,7 +24,8 @@ type FormRepository interface {
 	Create(ctx context.Context, form *Form) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Form, error)
 	GetByCustomURL(ctx context.Context, customURL string) (*Form, error)
-	GetByUserID(ctx context.Context, userID uuid.UUID, status FormStatus) ([]Form, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID, status FormStatus, category string) ([]Form, error)
+	GetCategoriesByUserID(ctx context.Context, userID uuid.UUID) ([]string, error)
 	Update(ctx context.Context, form *Form) error
 	Delete(ctx context.Context, id uuid.UUID) error
 	
@@ -56,8 +57,19 @@ type ResponseRepository interface {
 	GetResponseByID(ctx context.Context, id uuid.UUID) (*FormResponse, error)
 	GetResponsesByFormID(ctx context.Context, formID uuid.UUID) ([]FormResponse, error)
 	GetResponsesByEmail(ctx context.Context, email string) ([]FormResponse, error)
+	GetActiveResponseSession(ctx context.Context, formID uuid.UUID, email string) (*FormResponse, error)
 	CheckUserAlreadySubmitted(ctx context.Context, formID uuid.UUID, email string) (bool, error)
 	UpdateResponseGrade(ctx context.Context, responseID uuid.UUID, totalScore float64) error
+	UpdateResponseStatus(ctx context.Context, responseID uuid.UUID, status ResponseStatus) error
+	
+	// Autosave & Incremental Answers
+	UpsertAnswer(ctx context.Context, answer *ResponseAnswer) error
+	
+	// Live Proctoring, Telemetry & Creator Restart
+	UpdateTelemetry(ctx context.Context, responseID uuid.UUID, eventType string, eventMessage *string, currentQuestionIdx int, metadata *string) error
+	GetLiveMonitoringByFormID(ctx context.Context, formID uuid.UUID) ([]LiveMonitoringStudent, error)
+	RestartStudentResponse(ctx context.Context, responseID uuid.UUID, warningMsg string) error
+	AcknowledgeWarning(ctx context.Context, responseID uuid.UUID) error
 	
 	// Analytics
 	GetAnalyticsByFormID(ctx context.Context, formID uuid.UUID) (*FormAnalytics, error)

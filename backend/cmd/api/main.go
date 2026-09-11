@@ -31,7 +31,6 @@ import (
 // @contact.name HiDocs Support
 // @contact.email support@hidocs.id
 
-// @host localhost:8088
 // @BasePath /
 // @securityDefinitions.apikey BearerAuth
 // @in header
@@ -63,7 +62,7 @@ func main() {
 	// Services
 	authService := service.NewAuthService(userRepo, hasher, jwtManager, redisClient, emailSender)
 	userService := service.NewUserService(userRepo, hasher)
-	formService := service.NewFormService(formRepo, redisClient)
+	formService := service.NewFormService(formRepo, responseRepo, redisClient)
 	questionService := service.NewQuestionService(questionRepo, formRepo)
 	responseService := service.NewResponseService(responseRepo, formRepo, questionRepo)
 	docxService := service.NewDocxService(docxParser, formRepo, questionRepo)

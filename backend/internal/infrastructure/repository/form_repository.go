@@ -64,15 +64,27 @@ func (r *formRepository) GetByCustomURL(ctx context.Context, customURL string) (
 	return &form, nil
 }
 
-func (r *formRepository) GetByUserID(ctx context.Context, userID uuid.UUID, status domain.FormStatus) ([]domain.Form, error) {
+func (r *formRepository) GetByUserID(ctx context.Context, userID uuid.UUID, status domain.FormStatus, category string) ([]domain.Form, error) {
 	var forms []domain.Form
 	query := r.db.WithContext(ctx).Where("user_id = ?", userID)
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
+	if category != "" {
+		query = query.Where("category = ?", category)
+	}
 
 	err := query.Order("created_at desc").Find(&forms).Error
 	return forms, err
+}
+
+func (r *formRepository) GetCategoriesByUserID(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	var categories []string
+	err := r.db.WithContext(ctx).Model(&domain.Form{}).
+		Where("user_id = ?", userID).
+		Distinct("category").
+		Pluck("category", &categories).Error
+	return categories, err
 }
 
 func (r *formRepository) Update(ctx context.Context, form *domain.Form) error {
@@ -85,8 +97,14 @@ func (r *formRepository) Delete(ctx context.Context, id uuid.UUID) error {
 
 func (r *formRepository) UpsertFormSettings(ctx context.Context, settings *domain.FormSettings) error {
 	return r.db.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "form_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"duration_minutes", "auto_active_days", "is_active_immediately", "is_one_time_submission", "randomize_questions", "randomize_options", "start_time", "end_time"}),
+		Columns: []clause.Column{{Name: "form_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{
+			"duration_minutes", "auto_active_days", "is_active_immediately",
+			"is_one_time_submission", "randomize_questions", "randomize_options",
+			"start_time", "end_time", "theme_color", "cover_image_url", "logo_url",
+			"font_family", "allow_backtrack", "show_question_number", "fullscreen_mode",
+			"exam_token", "is_token_protected",
+		}),
 	}).Create(settings).Error
 }
 

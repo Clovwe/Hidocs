@@ -186,3 +186,36 @@ func (h *QuestionHandler) UploadImage(c *gin.Context) {
 
 	response.OK(c, "Image uploaded successfully to local storage", res)
 }
+
+// UploadMedia godoc
+// @Summary Upload media attachment (Image, Audio, Video) for questions and options
+// @Tags Questions
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param file formData file true "Media File (PNG, JPG, MP3, WAV, MP4, WEBM)"
+// @Success 200 {object} response.APIResponse{data=dto.UploadMediaResponse}
+// @Router /api/v1/questions/upload-media [post]
+func (h *QuestionHandler) UploadMedia(c *gin.Context) {
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		// fallback to check 'media' or 'image' field
+		var fileErr error
+		fileHeader, fileErr = c.FormFile("media")
+		if fileErr != nil {
+			fileHeader, fileErr = c.FormFile("image")
+			if fileErr != nil {
+				response.BadRequest(c, "Media file is required (form-data field: 'file', 'media', or 'image')", err)
+				return
+			}
+		}
+	}
+
+	res, err := h.questionService.UploadMedia(c.Request.Context(), fileHeader)
+	if err != nil {
+		response.BadRequest(c, err.Error(), err)
+		return
+	}
+
+	response.OK(c, "Media file uploaded successfully", res)
+}

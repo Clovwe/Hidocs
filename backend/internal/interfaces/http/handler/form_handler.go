@@ -31,19 +31,40 @@ func NewFormHandler(formService service.FormService, docxService service.DocxSer
 // @Produce json
 // @Security BearerAuth
 // @Param status query string false "Filter by status (DRAFT, ACTIVE, CLOSED)"
+// @Param category query string false "Filter by category (e.g. DDK, Android, Pendidikan Pancasila)"
 // @Success 200 {object} response.APIResponse{data=[]dto.FormResponseDTO}
 // @Router /api/v1/forms [get]
 func (h *FormHandler) ListForms(c *gin.Context) {
 	claims := c.MustGet(middleware.UserContextKey).(*security.JWTClaims)
 	status := domain.FormStatus(c.Query("status"))
+	category := c.Query("category")
 
-	forms, err := h.formService.ListUserForms(c.Request.Context(), claims.UserID, status)
+	forms, err := h.formService.ListUserForms(c.Request.Context(), claims.UserID, status, category)
 	if err != nil {
 		response.InternalServerError(c, "Failed to retrieve forms", err)
 		return
 	}
 
 	response.OK(c, "Forms retrieved successfully", forms)
+}
+
+// GetCategories godoc
+// @Summary Get all distinct categories for user forms
+// @Tags Forms
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} response.APIResponse{data=[]string}
+// @Router /api/v1/forms/categories [get]
+func (h *FormHandler) GetCategories(c *gin.Context) {
+	claims := c.MustGet(middleware.UserContextKey).(*security.JWTClaims)
+
+	categories, err := h.formService.GetUserCategories(c.Request.Context(), claims.UserID)
+	if err != nil {
+		response.InternalServerError(c, "Failed to retrieve categories", err)
+		return
+	}
+
+	response.OK(c, "Categories retrieved successfully", categories)
 }
 
 // CreateForm godoc

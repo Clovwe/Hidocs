@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"backend/internal/application/dto"
 	"backend/internal/application/service"
 	"backend/pkg/response"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type PublicHandler struct {
@@ -58,7 +60,38 @@ func (h *PublicHandler) GetFormQRCode(c *gin.Context) {
 	}
 
 	response.OK(c, "QR code generated successfully", gin.H{
-		"short_code": shortCode,
+		"short_code":  shortCode,
 		"qr_code_url": qrURL,
 	})
+}
+
+// VerifyExamToken godoc
+// @Summary Verify exam passcode token and start/resume exam session
+// @Tags Public
+// @Accept json
+// @Produce json
+// @Param form_id path string true "Form ID"
+// @Param request body dto.VerifyExamTokenRequest true "Verify Token Payload"
+// @Success 200 {object} response.APIResponse{data=dto.VerifyExamTokenResponse}
+// @Router /api/v1/public/forms/{form_id}/verify-token [post]
+func (h *PublicHandler) VerifyExamToken(c *gin.Context) {
+	formID, err := uuid.Parse(c.Param("form_id"))
+	if err != nil {
+		response.BadRequest(c, "Invalid form_id UUID format", err)
+		return
+	}
+
+	var req dto.VerifyExamTokenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request payload", err)
+		return
+	}
+
+	res, err := h.formService.VerifyExamToken(c.Request.Context(), formID, req)
+	if err != nil {
+		response.BadRequest(c, err.Error(), err)
+		return
+	}
+
+	response.OK(c, "Exam token verified successfully. You may begin the exam.", res)
 }

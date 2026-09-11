@@ -224,3 +224,175 @@ func (h *ResponseHandler) GetAnalytics(c *gin.Context) {
 
 	response.OK(c, "Analytics retrieved successfully", analytics)
 }
+
+// AutosaveAnswer godoc
+// @Summary Autosave incremental student answer and flagged (ragu-ragu) state
+// @Tags Public
+// @Accept json
+// @Produce json
+// @Param response_id path string true "Response Session ID"
+// @Param request body dto.AutosaveAnswerRequest true "Autosave Payload"
+// @Success 200 {object} response.APIResponse{data=dto.AutosaveResponse}
+// @Router /api/v1/public/responses/{response_id}/autosave [post]
+func (h *ResponseHandler) AutosaveAnswer(c *gin.Context) {
+	responseID, err := uuid.Parse(c.Param("response_id"))
+	if err != nil {
+		response.BadRequest(c, "Invalid response_id UUID format", err)
+		return
+	}
+
+	var req dto.AutosaveAnswerRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request payload", err)
+		return
+	}
+
+	res, err := h.responseService.AutosaveAnswer(c.Request.Context(), responseID, req)
+	if err != nil {
+		response.BadRequest(c, err.Error(), err)
+		return
+	}
+
+	response.OK(c, "Answer autosaved successfully", res)
+}
+
+// SendTelemetry godoc
+// @Summary Send client telemetry events (tab switch, window blur, app background, screenshot, split screen)
+// @Tags Public
+// @Accept json
+// @Produce json
+// @Param response_id path string true "Response Session ID"
+// @Param request body dto.TelemetryEventRequest true "Telemetry Event Payload"
+// @Success 200 {object} response.APIResponse
+// @Router /api/v1/public/responses/{response_id}/telemetry [post]
+func (h *ResponseHandler) SendTelemetry(c *gin.Context) {
+	responseID, err := uuid.Parse(c.Param("response_id"))
+	if err != nil {
+		response.BadRequest(c, "Invalid response_id UUID format", err)
+		return
+	}
+
+	var req dto.TelemetryEventRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request payload", err)
+		return
+	}
+
+	if err := h.responseService.SendTelemetry(c.Request.Context(), responseID, req); err != nil {
+		response.BadRequest(c, err.Error(), err)
+		return
+	}
+
+	response.OK(c, "Telemetry event logged successfully", nil)
+}
+
+// GetSessionState godoc
+// @Summary Get active exam session state and questions status (answered / flagged) for navigation
+// @Tags Public
+// @Produce json
+// @Param response_id path string true "Response Session ID"
+// @Success 200 {object} response.APIResponse{data=dto.SessionStateDTO}
+// @Router /api/v1/public/responses/{response_id}/session [get]
+func (h *ResponseHandler) GetSessionState(c *gin.Context) {
+	responseID, err := uuid.Parse(c.Param("response_id"))
+	if err != nil {
+		response.BadRequest(c, "Invalid response_id UUID format", err)
+		return
+	}
+
+	session, err := h.responseService.GetSessionState(c.Request.Context(), responseID)
+	if err != nil {
+		response.NotFound(c, err.Error(), err)
+		return
+	}
+
+	response.OK(c, "Session state retrieved successfully", session)
+}
+
+// AcknowledgeWarning godoc
+// @Summary Student acknowledges proctor warning after exam restart
+// @Tags Public
+// @Produce json
+// @Param response_id path string true "Response Session ID"
+// @Success 200 {object} response.APIResponse
+// @Router /api/v1/public/responses/{response_id}/acknowledge-warning [post]
+func (h *ResponseHandler) AcknowledgeWarning(c *gin.Context) {
+	responseID, err := uuid.Parse(c.Param("response_id"))
+	if err != nil {
+		response.BadRequest(c, "Invalid response_id UUID format", err)
+		return
+	}
+
+	if err := h.responseService.AcknowledgeWarning(c.Request.Context(), responseID); err != nil {
+		response.BadRequest(c, err.Error(), err)
+		return
+	}
+
+	response.OK(c, "Warning acknowledged. Exam resumed.", nil)
+}
+
+// GetLiveMonitoring godoc
+// @Summary Creator live monitoring of active students taking the exam
+// @Tags Live Monitoring
+// @Produce json
+// @Security BearerAuth
+// @Param form_id path string true "Form ID"
+// @Success 200 {object} response.APIResponse{data=[]dto.LiveMonitoringStudentDTO}
+// @Router /api/v1/forms/{form_id}/live-monitoring [get]
+func (h *ResponseHandler) GetLiveMonitoring(c *gin.Context) {
+	claims := c.MustGet(middleware.UserContextKey).(*security.JWTClaims)
+
+	formID, err := uuid.Parse(c.Param("form_id"))
+	if err != nil {
+		response.BadRequest(c, "Invalid form_id UUID format", err)
+		return
+	}
+
+	students, err := h.responseService.GetLiveMonitoring(c.Request.Context(), claims.UserID, formID)
+	if err != nil {
+		response.BadRequest(c, err.Error(), err)
+		return
+	}
+
+	response.OK(c, "Live monitoring data retrieved successfully", students)
+}
+
+// RestartStudentSession godoc
+// @Summary Creator restarts student exam attempt due to suspicious cheating behavior
+// @Tags Live Monitoring
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param form_id path string true "Form ID"
+// @Param response_id path string true "Response ID"
+// @Param request body dto.RestartStudentSessionRequest true "Restart Reason Payload"
+// @Success 200 {object} response.APIResponse
+// @Router /api/v1/forms/{form_id}/responses/{response_id}/restart [post]
+func (h *ResponseHandler) RestartStudentSession(c *gin.Context) {
+	claims := c.MustGet(middleware.UserContextKey).(*security.JWTClaims)
+
+	formID, err := uuid.Parse(c.Param("form_id"))
+	if err != nil {
+		response.BadRequest(c, "Invalid form_id UUID format", err)
+		return
+	}
+
+	responseID, err := uuid.Parse(c.Param("response_id"))
+	if err != nil {
+		response.BadRequest(c, "Invalid response_id UUID format", err)
+		return
+	}
+
+	var req dto.RestartStudentSessionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request payload", err)
+		return
+	}
+
+	if err := h.responseService.RestartStudentSession(c.Request.Context(), claims.UserID, formID, responseID, req); err != nil {
+		response.BadRequest(c, err.Error(), err)
+		return
+	}
+
+	response.OK(c, "Student exam attempt restarted successfully", nil)
+}
