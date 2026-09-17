@@ -2,33 +2,44 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LanguageProvider extends ChangeNotifier {
-  static const _preferenceKey = 'app_language';
+  static const _prefsKey = 'appLanguage';
+
   Locale _locale = const Locale('id');
+  bool _loaded = false;
 
   Locale get locale => _locale;
-  bool get isIndonesian => _locale.languageCode == 'id';
+  bool get isLoaded => _loaded;
 
   LanguageProvider() {
-    _restoreLocale();
+    _load();
   }
 
-  Future<void> _restoreLocale() async {
-    final prefs = await SharedPreferences.getInstance();
-    final languageCode = prefs.getString(_preferenceKey);
-    if (languageCode == 'en' || languageCode == 'id') {
-      _locale = Locale(languageCode!);
-      notifyListeners();
-    }
-  }
+  String get languageCode => _locale.languageCode;
 
   Future<void> setLanguage(String languageCode) async {
-    if (languageCode != 'en' && languageCode != 'id') return;
-    if (_locale.languageCode == languageCode) return;
+    final next = Locale(languageCode);
+    if (next == _locale) return;
 
-    _locale = Locale(languageCode);
+    _locale = next;
     notifyListeners();
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_preferenceKey, languageCode);
+    await prefs.setString(_prefsKey, languageCode);
+  }
+
+  Future<void> toggleLanguage() async {
+    await setLanguage(_locale.languageCode == 'id' ? 'en' : 'id');
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_prefsKey);
+    if (saved != null && (saved == 'en' || saved == 'id')) {
+      _locale = saved == 'en' ? const Locale('en') : const Locale('id');
+    } else {
+      _locale = const Locale('id');
+    }
+    _loaded = true;
+    notifyListeners();
   }
 }

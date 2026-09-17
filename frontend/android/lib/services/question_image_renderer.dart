@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -14,25 +14,15 @@ import '../widgets/code_block_widget.dart';
 import '../widgets/quill_embeds.dart';
 import '../widgets/rich_text_view.dart';
 
-/// Converts published questions into PNG images rendered off-screen.
-///
-/// Images are stored ONLY in the device temporary directory — nothing is
-/// sent to the backend or saved into any database. The fill screen uses
-/// these images when available and falls back to live rendering otherwise.
 class QuestionImageRenderer {
   QuestionImageRenderer._();
 
   static const String _dirName = 'question_images';
   static const int _maxFiles = 80;
 
-  /// hash -> absolute file path
   static final Map<String, String> _pathByHash = <String, String>{};
   static bool _indexScanned = false;
 
-  /// Stable hash built ONLY from fields that survive the backend
-  /// round-trip (text, markers-parsed math/code, options, points flags).
-  /// The rich-text delta (`content`) is intentionally excluded because it
-  /// is not persisted, so hashes stay identical on the fill side.
   static String hashQuestion(QuestionModel q) {
     final parts = <String>[
       q.type.name,
@@ -47,9 +37,6 @@ class QuestionImageRenderer {
     return md5.convert(utf8.encode(parts.join('|'))).toString();
   }
 
-  /// Returns the cached image path for a question, or null when the
-  /// question has never been rendered on this device. Call [warmup] once
-  /// (e.g. in initState) so lookups work across app restarts.
   static String? pathFor(QuestionModel q) {
     final hash = hashQuestion(q);
     final path = _pathByHash[hash];
@@ -58,25 +45,12 @@ class QuestionImageRenderer {
   }
 
   static Future<Directory> _baseDir() async {
-    String basePath;
-    try {
-      final tmp = await getTemporaryDirectory();
-      basePath = tmp.path;
-    } catch (_) {
-      try {
-        final docs = await getApplicationDocumentsDirectory();
-        basePath = docs.path;
-      } catch (_) {
-        basePath = '/sdcard/Download';
-      }
-    }
-    final dir = Directory('$basePath/$_dirName');
+    final tmp = await getTemporaryDirectory();
+    final dir = Directory('${tmp.path}/$_dirName');
     if (!dir.existsSync()) dir.createSync(recursive: true);
     return dir;
   }
 
-  /// Warms the in-memory index from disk so [pathFor] can answer
-  /// synchronously. Call once early (e.g. before rendering screens).
   static Future<void> warmup() async {
     if (_indexScanned) return;
     _indexScanned = true;
@@ -93,11 +67,6 @@ class QuestionImageRenderer {
     } catch (_) {}
   }
 
-  /// Renders every question to PNG (skipping ones already cached by hash).
-  ///
-  /// Returns how many questions have an image ready afterwards.
-  /// This function never throws — failures simply leave that question
-  /// without an image and the UI falls back to live rendering.
   static Future<int> renderAll(
     List<QuestionModel> questions, {
     required BuildContext context,
@@ -145,7 +114,6 @@ class QuestionImageRenderer {
         ready++;
       }
 
-      // Give the framework breathing room between captures.
       await Future<void>.delayed(Duration.zero);
     }
 
@@ -186,8 +154,6 @@ class QuestionImageRenderer {
 
       overlay.insert(entry);
 
-      // Two frames guarantee layout + paint of the inserted entry; the
-      // small delay lets inline base64 images inside the delta decode.
       await WidgetsBinding.instance.endOfFrame;
       await WidgetsBinding.instance.endOfFrame;
       await Future<void>.delayed(const Duration(milliseconds: 260));
@@ -210,15 +176,13 @@ class QuestionImageRenderer {
     }
   }
 
-  /// Clean, light-styled body used for the captured image so it stays
-  /// readable in both light & dark app themes.
   static Widget _questionBody(QuestionModel q) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         RichTextContentView(
-          content: q.content,
+          content: null,
           fallbackText: q.text,
           style: const TextStyle(
             fontSize: 15,
@@ -270,7 +234,6 @@ class QuestionImageRenderer {
     );
   }
 
-  /// Keeps only the newest [_maxFiles] images to bound disk usage.
   static Future<void> _prune(Directory dir) async {
     try {
       final files = dir

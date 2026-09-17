@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -11,19 +12,22 @@ import '../providers/response_provider.dart';
 import '../models/form_model.dart';
 import '../models/question_model.dart';
 import '../services/question_image_renderer.dart';
-import '../services/exam_security_service.dart';
-import '../widgets/secure_question_canvas.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/math_formula_widget.dart';
 import '../widgets/code_block_widget.dart';
 import '../widgets/image_zoom_widget.dart';
 import '../widgets/timer_widget.dart';
+import '../widgets/audio_player_widget.dart';
+import '../widgets/rich_text_view.dart';
+import '../l10n/app_localizations.dart';
 
 class FillFormScreen extends StatefulWidget {
   final FormModel form;
+  final String preEnteredToken;
 
   const FillFormScreen({
     required this.form,
+    this.preEnteredToken = '',
     super.key,
   });
 
@@ -31,11 +35,14 @@ class FillFormScreen extends StatefulWidget {
   State<FillFormScreen> createState() => _FillFormScreenState();
 }
 
-class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObserver {
+class _FillFormScreenState extends State<FillFormScreen> {
   late List<QuestionModel> _questions;
 
   final Map<String, dynamic> _answers = {};
   final Map<String, TextEditingController> _controllers = {};
+  final Set<int> _flags = {};
+
+  late String _token;
 
   Timer? _timer;
 
@@ -44,10 +51,9 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
 
   bool _submitted = false;
   bool _isSubmitting = false;
-  int _violationCount = 0;
-  bool _isOverlayBlocked = false;
 
   final TransformationController _zoomController = TransformationController();
+  final ScrollController _numberStripController = ScrollController();
   double _zoomScale = 1.0;
 
   void _zoomIn() {
@@ -74,35 +80,18 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!widget.form.isActive && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Form ini sudah ditutup dan tidak dapat diisi.'),
-            backgroundColor: AppTheme.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        Navigator.of(context).pop();
-      }
-    });
-
-    if (widget.form.isExam) {
-      WidgetsBinding.instance.addObserver(this);
-      ExamSecurityService.enableSecureScreen();
-    }
 
     _questions = List<QuestionModel>.from(
       widget.form.questions,
     );
 
-    // Warm the local question-image index so published exam questions can be
-    // displayed as images instead of live-rendered rich content.
-    if (widget.form.isExam) {
-      QuestionImageRenderer.warmup().then((_) {
-        if (mounted) setState(() {});
-      });
-    }
+    _token = widget.preEnteredToken.isNotEmpty
+        ? widget.preEnteredToken
+        : widget.form.accessToken;
+
+    QuestionImageRenderer.warmup().then((_) {
+      if (mounted) setState(() {});
+    });
 
     if (widget.form.shuffleQuestions) {
       _questions.shuffle();
@@ -111,6 +100,7 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
     if (widget.form.shuffleOptions) {
       _questions = _questions.map((q) {
         if ((q.type == QuestionType.multipleChoice ||
+                q.type == QuestionType.checkbox ||
                 q.type == QuestionType.imageChoice) &&
             q.options.isNotEmpty) {
           final shuffledOptions =
@@ -148,65 +138,10 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (!widget.form.isExam || _submitted || _isSubmitting) return;
-
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
-      _violationCount++;
-      setState(() {
-        _isOverlayBlocked = true;
-      });
-
-      if (_violationCount >= 3) {
-        _autoSubmit();
-      } else {
-        _showViolationWarningDialog();
-      }
-    } else if (state == AppLifecycleState.resumed) {
-      setState(() {
-        _isOverlayBlocked = false;
-      });
-    }
-  }
-
-  void _showViolationWarningDialog() {
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
-            SizedBox(width: 10),
-            Text('Deteksi Kecurangan!', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 18)),
-          ],
-        ),
-        content: Text(
-          'Anda terdeteksi meninggalkan aplikasi ujian! '
-          'Peringatan ke-$_violationCount dari 3. Jika Anda melanggar 3 kali, ujian akan otomatis dikumpulkan.',
-          style: const TextStyle(fontSize: 14, height: 1.5),
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: const Text('Saya Mengerti & Kembali Ujian'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
   void dispose() {
-    if (widget.form.isExam) {
-      WidgetsBinding.instance.removeObserver(this);
-      ExamSecurityService.disableSecureScreen();
-    }
     _timer?.cancel();
     _zoomController.dispose();
+    _numberStripController.dispose();
 
     for (final controller in _controllers.values) {
       controller.dispose();
@@ -240,6 +175,8 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
   }) async {
     if (_submitted || _isSubmitting) return;
 
+    final l10n = AppLocalizations.of(context);
+
     if (!auto) {
       final unanswered = _questions.where(
         (question) {
@@ -262,6 +199,14 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
             return true;
           }
 
+          if (question.type == QuestionType.matching && answer is Map) {
+            return answer.values.any((v) => v.toString().trim().isEmpty);
+          }
+
+          if (question.type == QuestionType.checkbox && answer is Set) {
+            return (answer).isEmpty;
+          }
+
           return false;
         },
       ).toList();
@@ -269,17 +214,17 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
       if (unanswered.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Row(
+            content: Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.warning_amber_rounded,
                   color: Colors.white,
                   size: 20,
                 ),
-                SizedBox(width: 10),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Please answer all required questions first.',
+                    l10n.answerRequired,
                   ),
                 ),
               ],
@@ -334,6 +279,27 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
           'selected_option_id': value,
           'answer_text': null,
         });
+      } else if (q.type == QuestionType.checkbox) {
+        final selectedIds = value is Set<String>
+            ? value.toList()
+            : <String>[];
+        for (final optId in selectedIds) {
+          answers.add({
+            'question_id': q.id,
+            'selected_option_id': optId,
+            'answer_text': null,
+          });
+        }
+      } else if (q.type == QuestionType.matching) {
+        final matchMap = value is Map ? Map<String, String>.from(
+          value.map((k, v) => MapEntry(k.toString(), v.toString())),
+        ) : <String, String>{};
+        final encoded = jsonEncode(matchMap);
+        answers.add({
+          'question_id': q.id,
+          'selected_option_id': null,
+          'answer_text': encoded,
+        });
       } else {
         answers.add({
           'question_id': q.id,
@@ -348,6 +314,7 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
       respondentEmail: auth.currentUser?.email ?? '',
       answers: answers,
       auto: auto,
+      token: _token,
     );
 
     if (!mounted) {
@@ -356,7 +323,7 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
 
     if (result == null) {
       final errorMessage = formProvider.error ??
-          'Gagal mengirim jawaban. Periksa jaringan Anda.';
+          l10n.failSendResp;
 
       formProvider.clearError();
 
@@ -394,8 +361,6 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
       return;
     }
 
-    ExamSecurityService.disableSecureScreen();
-
     setState(() {
       _isSubmitting = false;
       _submitted = true;
@@ -420,17 +385,17 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
     if (auto && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Row(
+          content: Row(
             children: [
-              Icon(
+              const Icon(
                 Icons.timer_off_rounded,
                 color: Colors.white,
                 size: 18,
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  "Time's up! Your response was submitted automatically.",
+                  l10n.timeUpAutoSubmit,
                 ),
               ),
             ],
@@ -446,11 +411,22 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
     }
   }
 
+  void _scrollToStrip(int index) {
+    if (!_numberStripController.hasClients) return;
+    final targetOffset = (index * 44.0) - 100.0;
+    _numberStripController.animateTo(
+      targetOffset.clamp(0.0, _numberStripController.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
+
   void _nextQuestion() {
     if (_current < _questions.length - 1) {
       setState(() {
         _current++;
       });
+      _scrollToStrip(_current);
     }
   }
 
@@ -459,19 +435,207 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
       setState(() {
         _current--;
       });
+      _scrollToStrip(_current);
     }
+  }
+
+  void _jumpToQuestion(int index) {
+    if (index >= 0 && index < _questions.length) {
+      setState(() => _current = index);
+      _scrollToStrip(_current);
+    }
+  }
+
+  bool _isAnswered(int index) {
+    if (index < 0 || index >= _questions.length) return false;
+    final q = _questions[index];
+    final answer = _answers[q.id];
+    if (answer == null) return false;
+    if (answer is String) return answer.trim().isNotEmpty;
+    if (answer is int) return answer != 0;
+    if (answer is Set) return answer.isNotEmpty;
+    if (answer is Map) return answer.values.any((v) => v.toString().trim().isNotEmpty);
+    return answer.toString().trim().isNotEmpty;
+  }
+
+  void _toggleFlag(int i) {
+    setState(() {
+      if (!_flags.add(i)) {
+        _flags.remove(i);
+      }
+    });
+  }
+
+  void _showQuestionPanel(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor:
+          Theme.of(context).brightness == Brightness.dark
+              ? AppTheme.darkCard
+              : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        final mutedColor =
+            isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
+        final answeredCount = _questions
+            .where((q) => _isAnswered(_questions.indexOf(q)))
+            .length;
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.questionNo,
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 16,
+                runSpacing: 8,
+                children: [
+                  _LegendDot(
+                    current: true,
+                    color: AppTheme.primary,
+                    label: l10n.navLegendCurrent,
+                  ),
+                  _LegendDot(
+                    color: AppTheme.success,
+                    label: l10n.navLegendAnswered,
+                  ),
+                  _LegendDot(
+                    color: AppTheme.warning,
+                    label: l10n.navLegendFlagged,
+                  ),
+                  _LegendDot(
+                    outlined: true,
+                    color: mutedColor,
+                    label: l10n.navLegendUnanswered,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: List.generate(_questions.length, (i) {
+                      final isCurrent = i == _current;
+                      final isFlaggedQ = _flags.contains(i);
+                      final isAnswered = _isAnswered(i);
+
+                      Color bg;
+                      Color fg;
+                      Color borderC;
+                      if (isCurrent) {
+                        bg = AppTheme.primary;
+                        fg = Colors.white;
+                        borderC = AppTheme.primary;
+                      } else if (isFlaggedQ) {
+                        bg = AppTheme.warning.withValues(alpha: 0.15);
+                        fg = AppTheme.warning;
+                        borderC = AppTheme.warning.withValues(alpha: 0.40);
+                      } else if (isAnswered) {
+                        bg = AppTheme.success.withValues(alpha: 0.12);
+                        fg = AppTheme.success;
+                        borderC = AppTheme.success.withValues(alpha: 0.30);
+                      } else {
+                        bg = isDark
+                            ? AppTheme.darkSurface
+                            : AppTheme.surfaceLight;
+                        fg = mutedColor;
+                        borderC = isDark ? AppTheme.darkBorder : AppTheme.border;
+                      }
+
+                      return GestureDetector(
+                        onTap: () {
+                          _jumpToQuestion(i);
+                          Navigator.of(ctx).pop();
+                        },
+                        child: Container(
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: bg,
+                            border: Border.all(
+                              color: borderC,
+                              width: isCurrent ? 2.5 : 1.5,
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${i + 1}',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: fg,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppTheme.darkSurface
+                      : AppTheme.surfaceLight,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _SummaryLine(
+                      icon: Icons.check_circle_rounded,
+                      color: AppTheme.success,
+                      text: l10n.answeredSummary(answeredCount),
+                    ),
+                    _SummaryLine(
+                      icon: Icons.flag_rounded,
+                      color: AppTheme.warning,
+                      text: l10n.flaggedSummary(_flags.length),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     if (_questions.isEmpty) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Form'),
+          title: Text(widget.form.title),
         ),
-        body: const Center(
+        body: Center(
           child: Text(
-            'This form has no questions.',
+            l10n.noQuestionsYetF,
           ),
         ),
       );
@@ -498,13 +662,11 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
         widget.form.hasTimer &&
         _remaining < 60;
 
-    return Stack(
-      children: [
-        Scaffold(
-          backgroundColor:
-              isDark
-                  ? AppTheme.darkBg
-                  : AppTheme.surfaceLight,
+    return Scaffold(
+      backgroundColor:
+          isDark
+              ? AppTheme.darkBg
+              : AppTheme.surfaceLight,
 
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -516,12 +678,46 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
           overflow: TextOverflow.ellipsis,
         ),
         actions: [
+          
+          IconButton(
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.grid_view_rounded, size: 22),
+                if (_flags.isNotEmpty)
+                  Positioned(
+                    right: -4,
+                    top: -4,
+                    child: Container(
+                      width: 14,
+                      height: 14,
+                      decoration: const BoxDecoration(
+                        color: AppTheme.warning,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${_flags.length}',
+                          style: const TextStyle(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            tooltip: l10n.questionNo,
+            onPressed: () => _showQuestionPanel(context),
+          ),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
                 icon: const Icon(Icons.zoom_out_rounded, size: 20),
-                tooltip: 'Zoom Out',
+                tooltip: l10n.zoomOut,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 onPressed: _zoomScale > 0.8 ? _zoomOut : null,
@@ -542,7 +738,7 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
               ),
               IconButton(
                 icon: const Icon(Icons.zoom_in_rounded, size: 20),
-                tooltip: 'Zoom In',
+                tooltip: l10n.zoomIn,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 onPressed: _zoomScale < 2.5 ? _zoomIn : null,
@@ -591,6 +787,96 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
             ),
           ),
 
+          Container(
+            height: 50,
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkCard : Colors.white,
+              border: Border(
+                bottom: BorderSide(
+                  color: isDark ? AppTheme.darkBorder : AppTheme.border,
+                ),
+              ),
+            ),
+            child: ListView.builder(
+              controller: _numberStripController,
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              itemCount: _questions.length,
+              itemBuilder: (context, i) {
+                final isCurrent = i == _current;
+                final isFlaggedQ = _flags.contains(i);
+                final isAns = _isAnswered(i);
+
+                Color bg;
+                Color fg;
+                Color borderC;
+
+                if (isCurrent) {
+                  bg = AppTheme.primary;
+                  fg = Colors.white;
+                  borderC = AppTheme.primary;
+                } else if (isFlaggedQ) {
+                  bg = AppTheme.warning.withValues(alpha: 0.18);
+                  fg = AppTheme.warning;
+                  borderC = AppTheme.warning;
+                } else if (isAns) {
+                  bg = AppTheme.success.withValues(alpha: 0.15);
+                  fg = AppTheme.success;
+                  borderC = AppTheme.success.withValues(alpha: 0.5);
+                } else {
+                  bg = isDark ? AppTheme.darkSurface : AppTheme.surfaceLight;
+                  fg = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
+                  borderC = isDark ? AppTheme.darkBorder : AppTheme.border;
+                }
+
+                return GestureDetector(
+                  onTap: () => _jumpToQuestion(i),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: bg,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: borderC,
+                        width: isCurrent ? 2.0 : 1.2,
+                      ),
+                      boxShadow: isCurrent
+                          ? [
+                              BoxShadow(
+                                color: AppTheme.primary.withValues(alpha: 0.3),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              )
+                            ]
+                          : null,
+                    ),
+                    child: Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '${i + 1}',
+                            style: TextStyle(
+                              color: fg,
+                              fontSize: 13,
+                              fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w600,
+                            ),
+                          ),
+                          if (isFlaggedQ && !isCurrent) ...[
+                            const SizedBox(width: 1),
+                            Icon(Icons.flag_rounded, size: 9, color: fg),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+
           Expanded(
             child: InteractiveViewer(
               transformationController: _zoomController,
@@ -631,7 +917,7 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
                             ),
                           ),
                           child: Text(
-                            'Question ${_current + 1} / ${_questions.length}',
+                            l10n.questionOf(_current + 1, _questions.length),
                             overflow:
                                 TextOverflow
                                     .ellipsis,
@@ -670,10 +956,10 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
                             ),
                           ),
                           child:
-                              const Text(
-                            'Required',
+                              Text(
+                            l10n.required,
                             style:
-                                TextStyle(
+                                const TextStyle(
                               fontSize: 10,
                               fontWeight:
                                   FontWeight
@@ -690,7 +976,7 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
 
                   const SizedBox(height: 18),
 
-                  if (widget.form.isExam && questionImagePath != null) ...[
+                  if (questionImagePath != null) ...[
                     GestureDetector(
                       onTap: () {
                         Navigator.push(
@@ -776,11 +1062,70 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
                         height: 20,
                       ),
                     ],
+
+                    if (q.audioUrl != null) ...[
+                      AudioPlayerWidget(audioSource: q.audioUrl!),
+                      const SizedBox(height: 20),
+                    ],
                   ],
 
                   _buildAnswer(
                     q,
                     isDark,
+                  ),
+
+                  const SizedBox(height: 16),
+                  GestureDetector(
+                    onTap: () => _toggleFlag(_current),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: _flags.contains(_current)
+                            ? AppTheme.warning.withValues(alpha: 0.12)
+                            : (isDark
+                                ? AppTheme.darkCard
+                                : AppTheme.surfaceCard),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _flags.contains(_current)
+                              ? AppTheme.warning.withValues(alpha: 0.40)
+                              : (isDark
+                                  ? AppTheme.darkBorder
+                                  : AppTheme.border),
+                          width: _flags.contains(_current) ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.flag_rounded,
+                            size: 16,
+                            color: _flags.contains(_current)
+                                ? AppTheme.warning
+                                : (isDark
+                                    ? AppTheme.darkTextMuted
+                                    : AppTheme.textMuted),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _flags.contains(_current)
+                                ? l10n.unflagQuestion
+                                : l10n.flagQuestion,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: _flags.contains(_current)
+                                  ? AppTheme.warning
+                                  : (isDark
+                                      ? AppTheme.darkTextMuted
+                                      : AppTheme.textMuted),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -791,25 +1136,30 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
           _NavBar(
             current: _current,
             total: _questions.length,
+            flaggedCount: _flags.length,
+            isFlagged: _flags.contains(_current),
             onPrev:
                 _previousQuestion,
             onNext:
                 _nextQuestion,
             onSubmit:
                 () => _submitForm(),
+            onOpenPanel:
+                () => _showQuestionPanel(context),
+            onToggleFlag:
+                () => _toggleFlag(_current),
           ),
         ],
       ),
-    ),
-    SecurityOverlayWidget(isVisible: _isOverlayBlocked),
-  ],
-);
-}
+    );
+  }
 
   Widget _buildAnswer(
     QuestionModel q,
     bool isDark,
   ) {
+    final l10n = AppLocalizations.of(context);
+
     switch (q.type) {
       case QuestionType.multipleChoice:
         return _MCAnswer(
@@ -823,12 +1173,32 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
           },
         );
 
+      case QuestionType.checkbox:
+        final selected = (_answers[q.id] is Set<String>)
+            ? _answers[q.id] as Set<String>
+            : <String>{};
+        return _CheckboxAnswer(
+          q: q,
+          selected: selected,
+          isDark: isDark,
+          onToggle: (id) {
+            setState(() {
+              final s = Set<String>.from(selected);
+              if (s.contains(id)) {
+                s.remove(id);
+              } else {
+                s.add(id);
+              }
+              _answers[q.id] = s;
+            });
+          },
+        );
+
       case QuestionType.shortText:
         return _TextAnswer(
           controller:
               _getController(q.id),
-          hint:
-              'Type a short answer...',
+          hint: l10n.shortAnsHint,
           maxLines: 1,
           onChanged: (v) {
             _answers[q.id] = v;
@@ -844,8 +1214,8 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
               q.type ==
                       QuestionType
                           .codeInput
-                  ? 'Write your code answer here...'
-                  : 'Type your answer...',
+                  ? l10n.writeCodeHint
+                  : l10n.typingAnsHint,
           maxLines: 6,
           monospace:
               q.type ==
@@ -860,8 +1230,7 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
         return _TextAnswer(
           controller:
               _getController(q.id),
-          hint:
-              'Write your answer or formula...',
+          hint: l10n.writeFormulaHint,
           maxLines: 3,
           onChanged: (v) {
             _answers[q.id] = v;
@@ -907,6 +1276,25 @@ class _FillFormScreenState extends State<FillFormScreen> with WidgetsBindingObse
             });
           },
         );
+
+      case QuestionType.matching:
+        final rawAnswer = _answers[q.id];
+        Map<String, String> currentMap = {};
+        if (rawAnswer is Map) {
+          currentMap = Map<String, String>.from(
+            rawAnswer.map((k, v) => MapEntry(k.toString(), v.toString())),
+          );
+        }
+        return _MatchingAnswer(
+          question: q,
+          currentAnswers: currentMap,
+          isDark: isDark,
+          onChanged: (map) {
+            setState(() {
+              _answers[q.id] = map;
+            });
+          },
+        );
     }
   }
 
@@ -948,6 +1336,9 @@ class _SuccessScreen
   Widget build(
     BuildContext context,
   ) {
+    final l10n =
+        AppLocalizations.of(context);
+
     final isDark =
         Theme.of(context).brightness ==
             Brightness.dark;
@@ -990,7 +1381,7 @@ class _SuccessScreen
               ),
 
               Text(
-                'Thank You!',
+                l10n.thankYou,
                 style: TextStyle(
                   fontSize: 30,
                   fontWeight:
@@ -1009,7 +1400,7 @@ class _SuccessScreen
               ),
 
               Text(
-                'Your response has been submitted successfully.',
+                l10n.submitSuccess,
                 style: TextStyle(
                   fontSize: 15,
                   color: isDark
@@ -1030,7 +1421,7 @@ class _SuccessScreen
                 width: double.infinity,
                 height: 50,
                 child: GradientButton(
-                  text: 'Back to Home',
+                  text: l10n.backToHome,
                   onPressed: onBack,
                   icon:
                       Icons.home_rounded,
@@ -1050,22 +1441,33 @@ class _NavBar
     extends StatelessWidget {
   final int current;
   final int total;
+  final int flaggedCount;
+  final bool isFlagged;
   final VoidCallback onPrev;
   final VoidCallback onNext;
   final VoidCallback onSubmit;
+  final VoidCallback onOpenPanel;
+  final VoidCallback onToggleFlag;
 
   const _NavBar({
     required this.current,
     required this.total,
+    required this.flaggedCount,
+    required this.isFlagged,
     required this.onPrev,
     required this.onNext,
     required this.onSubmit,
+    required this.onOpenPanel,
+    required this.onToggleFlag,
   });
 
   @override
   Widget build(
     BuildContext context,
   ) {
+    final l10n =
+        AppLocalizations.of(context);
+
     final isDark =
         Theme.of(context).brightness ==
             Brightness.dark;
@@ -1081,7 +1483,7 @@ class _NavBar
       padding:
           const EdgeInsets.fromLTRB(
         16,
-        12,
+        8,
         16,
         20,
       ),
@@ -1090,85 +1492,133 @@ class _NavBar
         color: isDark
             ? AppTheme.darkCard
             : AppTheme.surfaceCard,
+        borderRadius:
+            const BorderRadius.vertical(top: Radius.circular(20)),
+        border: Border(
+          top: BorderSide(
+            color: isDark
+                ? AppTheme.darkBorder
+                : AppTheme.border,
+          ),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black
                 .withValues(
-              alpha: 0.06,
+              alpha: 0.05,
             ),
-            blurRadius: 16,
+            blurRadius: 24,
             offset:
-                const Offset(0, -4),
+                const Offset(0, -8),
           ),
         ],
       ),
       child: SafeArea(
         top: false,
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if (!isFirst) ...[
-              Expanded(
-                flex: 1,
-                child:
-                    SizedBox(
-                  height: 50,
-                  child:
-                      OutlinedButton(
-                    onPressed:
-                        onPrev,
-                    style:
-                        OutlinedButton
-                            .styleFrom(
-                      padding:
-                          const EdgeInsets
-                              .symmetric(
-                        horizontal:
-                            8,
-                      ),
-                      shape:
-                          RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius
-                                .circular(
-                          14,
+            if (flaggedCount > 0) ...[
+              InkWell(
+                onTap: onOpenPanel,
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.warning.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: AppTheme.warning.withValues(alpha: 0.25)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.flag_rounded,
+                          size: 14, color: AppTheme.warning),
+                      const SizedBox(width: 6),
+                      Text(
+                        l10n.flagCountNote(flaggedCount),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.warning,
                         ),
                       ),
-                    ),
-                    child:
-                        const Icon(
-                      Icons
-                          .arrow_back_rounded,
-                      size: 20,
-                    ),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(
-                width: 10,
-              ),
             ],
-
-            Expanded(
-              flex: 2,
-              child: SizedBox(
-                height: 50,
-                child: isLast
-                    ? _SafeGradientButton(
-                        text:
-                            'Submit Response',
-                        icon: Icons
-                            .send_rounded,
-                        onPressed:
-                            onSubmit,
-                      )
-                    : _SafeGradientButton(
-                        text: 'Next',
-                        icon: Icons
-                            .arrow_forward_rounded,
-                        onPressed:
-                            onNext,
+            Row(
+              children: [
+                SizedBox(
+                  width: 44,
+                  height: 50,
+                  child: IconButton(
+                    icon: const Icon(Icons.grid_view_rounded, size: 20),
+                    tooltip: l10n.questionNo,
+                    padding: EdgeInsets.zero,
+                    onPressed: onOpenPanel,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                if (!isFirst) ...[
+                  Expanded(
+                    flex: 1,
+                    child: SizedBox(
+                      height: 50,
+                      child: OutlinedButton(
+                        onPressed: onPrev,
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: const Icon(Icons.arrow_back_rounded, size: 20),
                       ),
-              ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+
+                Expanded(
+                  flex: 2,
+                  child: SizedBox(
+                    height: 50,
+                    child: isLast
+                        ? _SafeGradientButton(
+                            text: l10n.submitResponse,
+                            icon: Icons.send_rounded,
+                            onPressed: onSubmit,
+                          )
+                        : _SafeGradientButton(
+                            text: l10n.next,
+                            icon: Icons.arrow_forward_rounded,
+                            onPressed: onNext,
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 44,
+                  height: 50,
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.flag_rounded,
+                      size: 20,
+                      color: isFlagged
+                          ? AppTheme.warning
+                          : (isDark ? AppTheme.darkTextMuted : AppTheme.textMuted),
+                    ),
+                    tooltip: isFlagged ? l10n.unflagQuestion : l10n.flagQuestion,
+                    padding: EdgeInsets.zero,
+                    onPressed: onToggleFlag,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -1422,27 +1872,44 @@ class _MCAnswer
                             height: 8,
                           ),
                         ],
-                        Text(
-                          opt.text,
-                          style:
-                              TextStyle(
-                            fontSize: 15,
-                            fontWeight:
-                                selected
-                                    ? FontWeight
-                                        .w600
-                                    : FontWeight
-                                        .w400,
-                            color: selected
-                                ? AppTheme
-                                    .primary
-                                : (isDark
-                                    ? AppTheme
-                                        .darkTextSecondary
-                                    : AppTheme
-                                        .textSecondary),
+                        if (opt.content != null && opt.content!.isNotEmpty)
+                          RichTextContentView(
+                            content: opt.content,
+                            fallbackText: opt.text,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: selected
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                              color: selected
+                                  ? AppTheme.primary
+                                  : (isDark
+                                      ? AppTheme.darkTextSecondary
+                                      : AppTheme.textSecondary),
+                            ),
+                          )
+                        else
+                          Text(
+                            opt.text,
+                            style:
+                                TextStyle(
+                              fontSize: 15,
+                              fontWeight:
+                                  selected
+                                      ? FontWeight
+                                          .w600
+                                      : FontWeight
+                                          .w400,
+                              color: selected
+                                  ? AppTheme
+                                      .primary
+                                  : (isDark
+                                      ? AppTheme
+                                          .darkTextSecondary
+                                      : AppTheme
+                                          .textSecondary),
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -1452,6 +1919,159 @@ class _MCAnswer
           );
         },
       ).toList(),
+    );
+  }
+}
+
+class _CheckboxAnswer extends StatelessWidget {
+  final QuestionModel q;
+  final Set<String> selected;
+  final bool isDark;
+  final void Function(String) onToggle;
+
+  const _CheckboxAnswer({
+    required this.q,
+    required this.selected,
+    required this.isDark,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppTheme.info.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppTheme.info.withValues(alpha: 0.25)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.info_outline_rounded,
+                  size: 14, color: AppTheme.info),
+              const SizedBox(width: 6),
+              Text(
+                l10n.chooseMultiple,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.info,
+                ),
+              ),
+            ],
+          ),
+        ),
+        ...q.options.map((opt) {
+          final isSelected = selected.contains(opt.id);
+
+          return GestureDetector(
+            onTap: () => onToggle(opt.id),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppTheme.primary.withValues(alpha: 0.07)
+                    : (isDark ? AppTheme.darkCard : AppTheme.surfaceCard),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isSelected
+                      ? AppTheme.primary
+                      : (isDark ? AppTheme.darkBorder : AppTheme.border),
+                  width: isSelected ? 2 : 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(6),
+                      color: isSelected ? AppTheme.primary : Colors.transparent,
+                      border: Border.all(
+                        color: isSelected
+                            ? AppTheme.primary
+                            : (isDark ? AppTheme.darkBorder : AppTheme.border),
+                        width: 2,
+                      ),
+                    ),
+                    child: isSelected
+                        ? const Icon(Icons.check_rounded,
+                            size: 14, color: Colors.white)
+                        : null,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (opt.imageUrl != null) ...[
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.network(
+                              opt.imageUrl!,
+                              width: double.infinity,
+                              height: 120,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const SizedBox(
+                                height: 60,
+                                child: Center(
+                                  child: Icon(Icons.broken_image_outlined,
+                                      color: AppTheme.textMuted),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                        if (opt.content != null && opt.content!.isNotEmpty)
+                          RichTextContentView(
+                            content: opt.content,
+                            fallbackText: opt.text,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight:
+                                  isSelected ? FontWeight.w600 : FontWeight.w400,
+                              color: isSelected
+                                  ? AppTheme.primary
+                                  : (isDark
+                                      ? AppTheme.darkTextSecondary
+                                      : AppTheme.textSecondary),
+                            ),
+                          )
+                        else
+                          Text(
+                            opt.text,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight:
+                                  isSelected ? FontWeight.w600 : FontWeight.w400,
+                              color: isSelected
+                                  ? AppTheme.primary
+                                  : (isDark
+                                      ? AppTheme.darkTextSecondary
+                                      : AppTheme.textSecondary),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+      ],
     );
   }
 }
@@ -1567,6 +2187,9 @@ class _RatingAnswer
   Widget build(
     BuildContext context,
   ) {
+    final l10n =
+        AppLocalizations.of(context);
+
     return Column(
       crossAxisAlignment:
           CrossAxisAlignment.start,
@@ -1618,8 +2241,8 @@ class _RatingAnswer
 
         Text(
           rating == 0
-              ? 'Not selected'
-              : '$rating out of $max stars',
+              ? l10n.notSelected
+              : l10n.outOfStars(max, rating),
           style: TextStyle(
             fontSize: 13,
             color: rating == 0
@@ -1636,7 +2259,6 @@ class _RatingAnswer
   }
 }
 
-
 class _YesNoAnswer
     extends StatelessWidget {
   final String? value;
@@ -1651,11 +2273,14 @@ class _YesNoAnswer
   Widget build(
     BuildContext context,
   ) {
+    final l10n =
+        AppLocalizations.of(context);
+
     return Row(
       children: [
         Expanded(
           child: _YNOption(
-            label: 'Yes',
+            label: l10n.yes,
             icon:
                 Icons.check_circle_rounded,
             color:
@@ -1673,7 +2298,7 @@ class _YesNoAnswer
 
         Expanded(
           child: _YNOption(
-            label: 'No',
+            label: l10n.no,
             icon:
                 Icons.cancel_rounded,
             color:
@@ -1779,6 +2404,284 @@ class _YNOption
           ),
         ),
       ),
+    );
+  }
+}
+
+class _MatchingAnswer extends StatefulWidget {
+  final QuestionModel question;
+  final Map<String, String> currentAnswers;
+  final bool isDark;
+  final void Function(Map<String, String>) onChanged;
+
+  const _MatchingAnswer({
+    required this.question,
+    required this.currentAnswers,
+    required this.isDark,
+    required this.onChanged,
+  });
+
+  @override
+  State<_MatchingAnswer> createState() => _MatchingAnswerState();
+}
+
+class _MatchingAnswerState extends State<_MatchingAnswer> {
+  late Map<String, String> _selected;
+  late List<String> _shuffledRights;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = Map<String, String>.from(widget.currentAnswers);
+    _shuffledRights =
+        widget.question.matchingPairs.map((p) => p.right).toList()..shuffle();
+  }
+
+  void _pick(String pairId, String? value) {
+    setState(() {
+      if (value == null) {
+        _selected.remove(pairId);
+      } else {
+        _selected[pairId] = value;
+      }
+    });
+    widget.onChanged(Map<String, String>.from(_selected));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final pairs = widget.question.matchingPairs;
+
+    if (pairs.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final cardColor =
+        widget.isDark ? AppTheme.darkCard : AppTheme.surfaceCard;
+    final borderColor =
+        widget.isDark ? AppTheme.darkBorder : AppTheme.border;
+    final textColor = widget.isDark
+        ? AppTheme.darkTextPrimary
+        : AppTheme.textPrimary;
+    final mutedColor =
+        widget.isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    l10n.leftCol,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.primary,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.info.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    l10n.choosePair,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.info,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        ...pairs.map((pair) {
+          final picked = _selected[pair.id];
+          final isAnswered = picked != null && picked.isNotEmpty;
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isAnswered
+                    ? AppTheme.success.withValues(alpha: 0.35)
+                    : borderColor,
+                width: isAnswered ? 1.5 : 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    pair.left,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: textColor,
+                    ),
+                  ),
+                ),
+                Icon(Icons.arrow_forward_rounded,
+                    size: 16, color: mutedColor),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: isAnswered
+                          ? AppTheme.success.withValues(alpha: 0.06)
+                          : (widget.isDark
+                              ? AppTheme.darkSurface
+                              : AppTheme.surfaceLight),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isAnswered
+                            ? AppTheme.success.withValues(alpha: 0.35)
+                            : borderColor,
+                      ),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: picked,
+                        isExpanded: true,
+                        isDense: true,
+                        hint: Text(
+                          l10n.pick,
+                          style: TextStyle(
+                              fontSize: 13, color: mutedColor),
+                        ),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: textColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        items: [
+                          DropdownMenuItem<String>(
+                            value: null,
+                            child: Text(
+                              l10n.clearChoice,
+                              style: TextStyle(
+                                  fontSize: 12, color: mutedColor),
+                            ),
+                          ),
+                          ..._shuffledRights.map(
+                            (r) => DropdownMenuItem<String>(
+                              value: r,
+                              child: Text(r,
+                                  overflow: TextOverflow.ellipsis),
+                            ),
+                          ),
+                        ],
+                        onChanged: (v) => _pick(pair.id, v),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+}
+
+class _LegendDot extends StatelessWidget {
+  final Color color;
+  final String label;
+  final bool current;
+  final bool outlined;
+  const _LegendDot({
+    required this.color,
+    required this.label,
+    this.current = false,
+    this.outlined = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Container(
+        width: 14,
+        height: 14,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: outlined ? Colors.transparent : color,
+          border: Border.all(
+            color: outlined ? color : Colors.transparent,
+            width: 1.5,
+          ),
+        ),
+        child: current
+            ? Center(
+                child: Container(
+                  width: 5,
+                  height: 5,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              )
+            : null,
+      ),
+      const SizedBox(width: 5),
+      Text(label,
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+    ]);
+  }
+}
+
+class _SummaryLine extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String text;
+  const _SummaryLine({
+    required this.icon,
+    required this.color,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 }

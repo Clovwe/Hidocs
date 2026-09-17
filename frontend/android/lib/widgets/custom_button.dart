@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../app_theme.dart';
 
 enum ButtonType { primary, outlined, danger, success }
@@ -11,20 +11,24 @@ class CustomButton extends StatelessWidget {
   final bool fullWidth;
   final IconData? icon;
   final double height;
+  final Color? color;
 
   const CustomButton({
     required this.text,
     required this.onPressed,
-    this.type      = ButtonType.primary,
+    this.type = ButtonType.primary,
     this.isLoading = false,
     this.fullWidth = false,
     this.icon,
-    this.height    = 50,
+    this.height = 50,
+    this.color,
     super.key,
   });
 
   @override
   Widget build(BuildContext context) {
+    final themePrimary = Theme.of(context).colorScheme.primary;
+
     Color bgColor;
     Color fgColor = Colors.white;
     Color bdColor = Colors.transparent;
@@ -32,33 +36,40 @@ class CustomButton extends StatelessWidget {
 
     switch (type) {
       case ButtonType.primary:
-        bgColor = AppTheme.primary;
+        bgColor = color ?? themePrimary;
         break;
+
       case ButtonType.danger:
         bgColor = AppTheme.error;
         break;
+
       case ButtonType.success:
         bgColor = AppTheme.success;
         break;
+
       case ButtonType.outlined:
         bgColor = Colors.transparent;
-        fgColor = AppTheme.primary;
-        bdColor = AppTheme.border;
+        fgColor = color ?? themePrimary;
+        bdColor = color ?? themePrimary;
         outlined = true;
         break;
     }
 
     return SizedBox(
-      width:  fullWidth ? double.infinity : null,
+      width: fullWidth ? double.infinity : null,
       height: height,
       child: outlined
           ? OutlinedButton(
               onPressed: isLoading ? null : onPressed,
               style: OutlinedButton.styleFrom(
                 foregroundColor: fgColor,
-                side: BorderSide(color: bdColor, width: 1.5),
+                side: BorderSide(
+                  color: bdColor,
+                  width: 1.5,
+                ),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                  borderRadius: BorderRadius.circular(14),
+                ),
                 padding: const EdgeInsets.symmetric(horizontal: 24),
               ),
               child: _content(fgColor),
@@ -71,7 +82,8 @@ class CustomButton extends StatelessWidget {
                 elevation: 0,
                 shadowColor: Colors.transparent,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                  borderRadius: BorderRadius.circular(14),
+                ),
                 padding: const EdgeInsets.symmetric(horizontal: 24),
               ),
               child: _content(fgColor),
@@ -82,18 +94,35 @@ class CustomButton extends StatelessWidget {
   Widget _content(Color fgColor) {
     if (isLoading) {
       return SizedBox(
-          width: 20, height: 20,
-          child: CircularProgressIndicator(
-              strokeWidth: 2.5,
-              color: fgColor == Colors.white ? Colors.white : AppTheme.primary));
+        width: 20,
+        height: 20,
+        child: CircularProgressIndicator(
+          strokeWidth: 2.5,
+          color: fgColor,
+        ),
+      );
     }
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      if (icon != null) ...[
-        Icon(icon!, size: 18, color: fgColor),
-        const SizedBox(width: 8),
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (icon != null) ...[
+          Icon(
+            icon!,
+            size: 18,
+            color: fgColor,
+          ),
+          const SizedBox(width: 8),
+        ],
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: fgColor,
+          ),
+        ),
       ],
-      Text(text, style: TextStyle(
-          fontSize: 15, fontWeight: FontWeight.w700, color: fgColor)),
-    ]);
+    );
   }
 }

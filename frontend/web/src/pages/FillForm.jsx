@@ -1,4 +1,4 @@
-import { getFormById, submitForm as submitFormApi } from '../api/formApi';
+import { getFormById, getPublicForm, submitForm as submitFormApi } from '../api/formApi';
 import { getQuestionsByForm } from '../api/questionApi';
 
 import {
@@ -39,9 +39,3089 @@ import { FormContext } from "../context/FormContext";
 
 import logo from "../assets/images/logo.png";
 
-import "../assets/css/FillForm.css";
-import "../assets/css/FillFormImageZoom.css";
-import "../assets/css/FillFormSpecialAnswers.css";
+
+const fillFormStyles = `
+/* === FillForm.css === */
+/* =========================================================
+   FILL FORM — HIDOCS
+========================================================= */
+
+.fillform-page,
+.fillform-page * {
+    box-sizing: border-box;
+}
+
+
+/* =========================================================
+   PAGE
+========================================================= */
+
+.fillform-page {
+    width: 100%;
+    min-height: 100vh;
+
+    overflow-x: hidden;
+
+    background:
+        radial-gradient(
+            circle at top right,
+            rgba(72, 139, 224, 0.08),
+            transparent 28%
+        ),
+        #f3f6fb;
+
+    color: #22344d;
+
+    font-family: "Poppins", sans-serif;
+
+    transition:
+        background 0.25s ease,
+        color 0.25s ease;
+}
+
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+.fillform-header {
+    position: sticky;
+    top: 0;
+
+    z-index: 100;
+
+    width: 100%;
+    min-height: 92px;
+
+    padding: 16px 28px;
+
+    display: grid;
+    grid-template-columns:
+        minmax(240px, 0.8fr)
+        minmax(320px, 1.35fr)
+        minmax(145px, 0.45fr);
+
+    align-items: center;
+
+    gap: 26px;
+
+    overflow: hidden;
+
+    background:
+        linear-gradient(
+            135deg,
+            #123d78 0%,
+            #1f61ad 56%,
+            #347fe0 100%
+        );
+
+    color: #ffffff;
+
+    box-shadow:
+        inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+        0 10px 26px rgba(27, 76, 137, 0.18);
+}
+
+.fillform-header::after {
+    content: "";
+
+    position: absolute;
+
+    width: 190px;
+    height: 190px;
+
+    top: -110px;
+    right: -35px;
+
+    border-radius: 50%;
+
+    border:
+        1px solid rgba(255, 255, 255, 0.13);
+
+    background:
+        rgba(255, 255, 255, 0.05);
+
+    pointer-events: none;
+}
+
+
+/* =========================================================
+   BRAND
+========================================================= */
+
+.fillform-brand {
+    position: relative;
+
+    z-index: 2;
+
+    min-width: 0;
+
+    display: flex;
+    align-items: center;
+
+    gap: 12px;
+}
+
+.fillform-logo-wrapper {
+    width: 48px;
+    height: 48px;
+
+    flex-shrink: 0;
+
+    border:
+        1px solid rgba(255, 255, 255, 0.2);
+
+    border-radius: 13px;
+
+    background:
+        rgba(255, 255, 255, 0.14);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.fillform-logo-wrapper img {
+    width: 34px;
+    height: 34px;
+
+    display: block;
+
+    object-fit: contain;
+}
+
+.fillform-brand-text {
+    min-width: 0;
+}
+
+.fillform-brand-text h2 {
+    margin: 0 0 4px;
+
+    color: #ffffff;
+
+    font-size: 23px;
+    line-height: 1.2;
+
+    font-weight: 700;
+
+    letter-spacing: -0.35px;
+}
+
+.fillform-brand-text span {
+    display: block;
+
+    max-width: 260px;
+
+    color:
+        rgba(255, 255, 255, 0.72);
+
+    font-size: 11px;
+    line-height: 1.4;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+
+/* =========================================================
+   HEADER PROGRESS
+========================================================= */
+
+.fillform-header-progress {
+    position: relative;
+
+    z-index: 2;
+
+    min-width: 0;
+}
+
+.fillform-progress-information {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 12px;
+
+    margin-bottom: 8px;
+}
+
+.fillform-progress-information span {
+    color:
+        rgba(255, 255, 255, 0.86);
+
+    font-size: 12px;
+
+    font-weight: 600;
+}
+
+.fillform-progress-information strong {
+    color: #ffffff;
+
+    font-size: 13px;
+
+    font-weight: 700;
+}
+
+.fillform-progress-track {
+    width: 100%;
+    height: 8px;
+
+    overflow: hidden;
+
+    border-radius: 999px;
+
+    background:
+        rgba(255, 255, 255, 0.2);
+}
+
+.fillform-progress-fill {
+    height: 100%;
+
+    border-radius: inherit;
+
+    background:
+        linear-gradient(
+            90deg,
+            #ffffff,
+            #dcecff
+        );
+
+    box-shadow:
+        0 0 10px rgba(255, 255, 255, 0.25);
+
+    transition:
+        width 0.35s ease;
+}
+
+
+/* =========================================================
+   TIMER
+========================================================= */
+
+.fillform-timer {
+    position: relative;
+
+    z-index: 2;
+
+    min-height: 58px;
+
+    padding: 0 15px;
+
+    border:
+        1px solid rgba(255, 255, 255, 0.15);
+
+    border-radius: 15px;
+
+    background:
+        rgba(255, 255, 255, 0.13);
+
+    color: #ffffff;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 11px;
+
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease;
+}
+
+.fillform-timer > svg {
+    width: 17px;
+    height: 17px;
+
+    flex-shrink: 0;
+
+    font-size: 19px;
+}
+
+.fillform-timer > div {
+    display: flex;
+    flex-direction: column;
+
+    gap: 2px;
+}
+
+.fillform-timer span {
+    color:
+        rgba(255, 255, 255, 0.7);
+
+    font-size: 9px;
+
+    font-weight: 600;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.7px;
+}
+
+.fillform-timer strong {
+    color: #ffffff;
+
+    font-size: 18px;
+
+    line-height: 1;
+
+    font-weight: 700;
+
+    letter-spacing: 0.4px;
+}
+
+.fillform-timer.warning {
+    background:
+        rgba(219, 67, 67, 0.2);
+
+    border-color:
+        rgba(255, 205, 205, 0.3);
+}
+
+
+/* =========================================================
+   BODY
+========================================================= */
+
+.fillform-body {
+    width: 100%;
+    max-width: 1440px;
+
+    min-height:
+        calc(100vh - 92px);
+
+    margin: 0 auto;
+
+    display: grid;
+
+    grid-template-columns:
+        230px minmax(0, 1fr);
+
+    align-items: stretch;
+}
+
+
+/* =========================================================
+   SIDEBAR
+========================================================= */
+
+.question-sidebar {
+    position: sticky;
+    top: 92px;
+
+    align-self: start;
+
+    width: 100%;
+    min-height:
+        calc(100vh - 92px);
+
+    padding: 28px 20px 32px;
+
+    border-right:
+        1px solid #dfe7f0;
+
+    background:
+        rgba(255, 255, 255, 0.96);
+
+    box-shadow:
+        8px 0 20px rgba(24, 51, 84, 0.035);
+}
+
+.sidebar-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+
+    gap: 12px;
+
+    margin-bottom: 19px;
+}
+
+.sidebar-heading > div {
+    min-width: 0;
+}
+
+.sidebar-heading span {
+    display: block;
+
+    margin-bottom: 3px;
+
+    color: #7590ae;
+
+    font-size: 9px;
+
+    font-weight: 700;
+
+    letter-spacing: 0.8px;
+
+    text-transform: uppercase;
+}
+
+.sidebar-heading h3 {
+    margin: 0;
+
+    color: #2a3e56;
+
+    font-size: 19px;
+
+    font-weight: 700;
+}
+
+.sidebar-heading > strong {
+    min-width: 42px;
+    height: 30px;
+
+    padding: 0 8px;
+
+    border-radius: 9px;
+
+    background: #edf5fd;
+
+    color: #3179c1;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 11px;
+
+    font-weight: 700;
+}
+
+
+/* =========================================================
+   QUESTION GRID
+========================================================= */
+
+.question-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+
+    gap: 8px;
+
+    margin-bottom: 22px;
+}
+
+.question-number {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+
+    padding: 0;
+
+    border:
+        1px solid #dce5ef;
+
+    border-radius: 11px;
+
+    background: #f4f7fb;
+
+    color: #7e8fa4;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-family: inherit;
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition:
+        transform 0.2s ease,
+        background 0.2s ease,
+        color 0.2s ease,
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.question-number:hover {
+    transform: translateY(-2px);
+
+    border-color: #bcd4ec;
+
+    background: #edf5fd;
+
+    color: #3179c1;
+}
+
+.question-number.active {
+    border-color: #2f76c2;
+
+    background:
+        linear-gradient(
+            145deg,
+            #2269b6,
+            #327fd2
+        );
+
+    color: #ffffff;
+
+    box-shadow:
+        0 7px 15px rgba(45, 113, 190, 0.25);
+}
+
+.question-number.answered {
+    border-color: #bfe3d1;
+
+    background: #e8f7ef;
+
+    color: #269b68;
+}
+
+.question-number svg {
+    width: 12px;
+    height: 12px;
+
+    font-size: 14px;
+}
+
+
+/* =========================================================
+   SIDEBAR COMPLETION
+========================================================= */
+
+.sidebar-completion {
+    margin-bottom: 23px;
+
+    padding: 14px;
+
+    border:
+        1px solid #e1e8f0;
+
+    border-radius: 13px;
+
+    background: #f8fafc;
+}
+
+.sidebar-completion-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 10px;
+
+    margin-bottom: 9px;
+}
+
+.sidebar-completion-heading span {
+    color: #7e8fa4;
+
+    font-size: 10px;
+
+    font-weight: 600;
+}
+
+.sidebar-completion-heading strong {
+    color: #2f78c0;
+
+    font-size: 11px;
+
+    font-weight: 700;
+}
+
+.sidebar-completion-track {
+    width: 100%;
+    height: 6px;
+
+    overflow: hidden;
+
+    border-radius: 999px;
+
+    background: #e3eaf2;
+}
+
+.sidebar-completion-track > div {
+    height: 100%;
+
+    border-radius: inherit;
+
+    background:
+        linear-gradient(
+            90deg,
+            #2a9d6d,
+            #52c993
+        );
+
+    transition:
+        width 0.35s ease;
+}
+
+
+/* =========================================================
+   LEGEND
+========================================================= */
+
+.question-legend {
+    padding-top: 18px;
+
+    border-top:
+        1px solid #e6ebf1;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 13px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+
+    gap: 9px;
+}
+
+.legend-item p {
+    margin: 0;
+
+    color: #7d8ea2;
+
+    font-size: 11px;
+
+    font-weight: 500;
+}
+
+.legend {
+    width: 13px;
+    height: 13px;
+
+    flex-shrink: 0;
+
+    border:
+        1px solid #d8e1eb;
+
+    border-radius: 4px;
+
+    background: #f4f7fb;
+}
+
+.legend.current {
+    border-color: #2f76c2;
+
+    background: #2f76c2;
+}
+
+.legend.answered {
+    border-color: #28a16d;
+
+    background: #28a16d;
+}
+
+
+/* =========================================================
+   QUESTION CONTENT
+========================================================= */
+
+.question-content {
+    min-width: 0;
+
+    padding: 26px 28px 42px;
+}
+
+
+/* =========================================================
+   QUESTION CARD
+========================================================= */
+
+.question-card {
+    width: 100%;
+    max-width: 980px;
+
+    margin: 0 auto;
+
+    padding: 25px;
+
+    border:
+        1px solid #dfe7f0;
+
+    border-radius: 21px;
+
+    background: #ffffff;
+
+    box-shadow:
+        0 10px 28px rgba(24, 51, 84, 0.07);
+}
+
+
+/* =========================================================
+   QUESTION HEADER
+========================================================= */
+
+.question-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+
+    gap: 18px;
+
+    margin-bottom: 21px;
+}
+
+.question-heading-content {
+    min-width: 0;
+}
+
+.question-label {
+    min-height: 27px;
+
+    padding: 0 10px;
+
+    border:
+        1px solid #cfe1f3;
+
+    border-radius: 999px;
+
+    background: #edf5fd;
+
+    color: #347bc1;
+
+    display: inline-flex;
+    align-items: center;
+
+    font-size: 9px;
+
+    font-weight: 700;
+
+    letter-spacing: 0.7px;
+
+    text-transform: uppercase;
+}
+
+.question-header h1 {
+    margin: 13px 0 7px;
+
+    color: #263a52;
+
+    font-size: 26px;
+
+    line-height: 1.4;
+
+    font-weight: 700;
+
+    letter-spacing: -0.45px;
+}
+
+.question-index {
+    margin-right: 7px;
+
+    color: #3179c1;
+}
+
+.question-instruction {
+    margin: 0;
+
+    color: #8997a8;
+
+    font-size: 12px;
+
+    line-height: 1.55;
+}
+
+.question-header-icon {
+    width: 52px;
+    height: 52px;
+
+    flex-shrink: 0;
+
+    border-radius: 14px;
+
+    background: #e9f2fc;
+
+    color: #347bc1;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 22px;
+}
+
+.question-header-icon svg {
+    width: 20px;
+    height: 20px;
+}
+
+
+/* =========================================================
+   QUESTION IMAGE
+========================================================= */
+
+.question-image {
+    width: 100%;
+
+    margin-bottom: 20px;
+
+    overflow: hidden;
+
+    border:
+        1px solid #dfe7f0;
+
+    border-radius: 16px;
+
+    background: #eef3f8;
+
+    box-shadow:
+        0 6px 16px rgba(24, 51, 84, 0.06);
+}
+
+.question-image img {
+    width: 100%;
+    max-height: 400px;
+
+    display: block;
+
+    object-fit: cover;
+}
+
+
+/* =========================================================
+   FIELDSET
+========================================================= */
+
+.options-fieldset {
+    min-width: 0;
+
+    margin: 0;
+    padding: 0;
+
+    border: none;
+}
+
+.sr-only {
+    position: absolute;
+
+    width: 1px;
+    height: 1px;
+
+    padding: 0;
+    margin: -1px;
+
+    overflow: hidden;
+
+    clip: rect(0, 0, 0, 0);
+
+    white-space: nowrap;
+
+    border: 0;
+}
+
+
+/* =========================================================
+   OPTIONS
+========================================================= */
+
+.options-list {
+    display: flex;
+    flex-direction: column;
+
+    gap: 11px;
+}
+
+.option-card {
+    position: relative;
+
+    width: 100%;
+    min-height: 66px;
+
+    padding: 11px 15px;
+
+    border:
+        1px solid #dce5ef;
+
+    border-radius: 15px;
+
+    background: #ffffff;
+
+    display: flex;
+    align-items: center;
+
+    gap: 13px;
+
+    cursor: pointer;
+
+    transition:
+        transform 0.2s ease,
+        border-color 0.2s ease,
+        background 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.option-card:hover {
+    transform: translateY(-2px);
+
+    border-color: #bdd5ec;
+
+    background: #f8fbfe;
+
+    box-shadow:
+        0 7px 17px rgba(24, 51, 84, 0.06);
+}
+
+.option-card.selected {
+    border-color: #2f76c2;
+
+    background:
+        linear-gradient(
+            145deg,
+            #edf5fd,
+            #f8fbff
+        );
+
+    box-shadow:
+        0 7px 17px rgba(45, 113, 190, 0.11);
+}
+
+.option-card input {
+    position: absolute;
+
+    width: 1px;
+    height: 1px;
+
+    opacity: 0;
+
+    pointer-events: none;
+}
+
+.option-letter {
+    width: 39px;
+    height: 39px;
+
+    flex-shrink: 0;
+
+    border-radius: 11px;
+
+    background: #edf3fb;
+
+    color: #397cc0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 14px;
+
+    font-weight: 700;
+
+    transition:
+        background 0.2s ease,
+        color 0.2s ease;
+}
+
+.option-card.selected
+.option-letter {
+    background: #2f76c2;
+
+    color: #ffffff;
+}
+
+.option-text {
+    min-width: 0;
+
+    flex: 1;
+
+    color: #2d4057;
+
+    font-size: 14px;
+
+    line-height: 1.45;
+
+    font-weight: 600;
+}
+
+.option-check {
+    width: 22px;
+    height: 22px;
+
+    flex-shrink: 0;
+
+    color: #2f76c2;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    opacity: 0;
+
+    transform: scale(0.8);
+
+    transition:
+        opacity 0.2s ease,
+        transform 0.2s ease;
+}
+
+.option-card.selected
+.option-check {
+    opacity: 1;
+
+    transform: scale(1);
+}
+
+.option-check svg {
+    width: 17px;
+    height: 17px;
+
+    font-size: 19px;
+}
+
+
+/* =========================================================
+   WARNING
+========================================================= */
+
+.fillform-warning {
+    width: 100%;
+
+    margin-top: 17px;
+
+    padding: 13px 15px;
+
+    border:
+        1px solid #f0d8a8;
+
+    border-radius: 13px;
+
+    background: #fff7e7;
+
+    color: #9e6b13;
+
+    display: flex;
+    align-items: flex-start;
+
+    gap: 10px;
+}
+
+.fillform-warning > svg {
+    margin-top: 2px;
+
+    flex-shrink: 0;
+
+    font-size: 16px;
+}
+
+.fillform-warning > div {
+    display: flex;
+    flex-direction: column;
+
+    gap: 3px;
+}
+
+.fillform-warning strong {
+    font-size: 12px;
+
+    font-weight: 700;
+}
+
+.fillform-warning span {
+    font-size: 10px;
+
+    line-height: 1.5;
+}
+
+
+/* =========================================================
+   QUESTION FOOTER
+========================================================= */
+
+.question-footer {
+    width: 100%;
+
+    margin-top: 24px;
+    padding-top: 18px;
+
+    border-top:
+        1px solid #e5ebf2;
+
+    display: grid;
+
+    grid-template-columns:
+        minmax(135px, 0.45fr)
+        minmax(120px, 0.45fr)
+        minmax(170px, 0.55fr);
+
+    align-items: center;
+
+    gap: 10px;
+}
+
+.previous-btn,
+.next-btn,
+.submit-btn {
+    width: 100%;
+    height: 43px;
+
+    padding: 0 14px;
+
+    border-radius: 11px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 8px;
+
+    font-family: inherit;
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition:
+        transform 0.2s ease,
+        background 0.2s ease,
+        color 0.2s ease,
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.previous-btn {
+    border:
+        1px solid #d8e1eb;
+
+    background: #ffffff;
+
+    color: #6f8298;
+}
+
+.previous-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+
+    border-color: #bfd3e6;
+
+    background: #f4f8fc;
+
+    color: #315f8f;
+}
+
+.previous-btn:disabled {
+    cursor: not-allowed;
+
+    opacity: 0.45;
+}
+
+.next-btn,
+.submit-btn {
+    border: none;
+
+    background:
+        linear-gradient(
+            90deg,
+            #1f5fa4,
+            #2e7fd0
+        );
+
+    color: #ffffff;
+
+    box-shadow:
+        0 6px 14px rgba(37, 105, 178, 0.2);
+}
+
+.next-btn:hover,
+.submit-btn:hover {
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 10px 19px rgba(37, 105, 178, 0.27);
+
+    filter: brightness(1.04);
+}
+
+.submit-btn {
+    background:
+        linear-gradient(
+            90deg,
+            #258960,
+            #32ae79
+        );
+
+    box-shadow:
+        0 6px 14px rgba(42, 155, 105, 0.2);
+}
+
+.submit-btn:hover {
+    box-shadow:
+        0 10px 19px rgba(42, 155, 105, 0.27);
+}
+
+.previous-btn svg,
+.next-btn svg,
+.submit-btn svg {
+    width: 10px;
+    height: 10px;
+
+    flex-shrink: 0;
+
+    font-size: 12px;
+}
+
+.question-footer-status {
+    text-align: center;
+}
+
+.question-footer-status span {
+    color: #8494a7;
+
+    font-size: 10px;
+
+    font-weight: 600;
+}
+
+
+/* =========================================================
+   DARK MODE
+========================================================= */
+
+.fillform-page.dark {
+    background:
+        radial-gradient(
+            circle at top right,
+            rgba(70, 135, 216, 0.08),
+            transparent 28%
+        ),
+        #0d1624;
+
+    color: #e7edf6;
+}
+
+.fillform-page.dark
+.fillform-header {
+    background:
+        linear-gradient(
+            135deg,
+            #0b294f 0%,
+            #164575 55%,
+            #2268aa 100%
+        );
+
+    box-shadow:
+        inset 0 -1px 0 rgba(255, 255, 255, 0.07),
+        0 10px 26px rgba(0, 0, 0, 0.25);
+}
+
+.fillform-page.dark
+.question-sidebar {
+    background:
+        rgba(23, 34, 52, 0.97);
+
+    border-color: #2c3b50;
+
+    box-shadow:
+        8px 0 20px rgba(0, 0, 0, 0.15);
+}
+
+.fillform-page.dark
+.sidebar-heading h3,
+.fillform-page.dark
+.question-header h1,
+.fillform-page.dark
+.option-text {
+    color: #f1f5f9;
+}
+
+.fillform-page.dark
+.sidebar-heading span,
+.fillform-page.dark
+.question-instruction,
+.fillform-page.dark
+.legend-item p,
+.fillform-page.dark
+.question-footer-status span {
+    color: #8fa0b4;
+}
+
+.fillform-page.dark
+.sidebar-heading > strong,
+.fillform-page.dark
+.question-label {
+    background: #203955;
+
+    border-color: #2e5073;
+
+    color: #73b6ff;
+}
+
+.fillform-page.dark
+.question-number {
+    background: #1f2d40;
+
+    border-color: #314157;
+
+    color: #93a5b9;
+}
+
+.fillform-page.dark
+.question-number:hover {
+    background: #26384e;
+
+    border-color: #45617e;
+
+    color: #b9cee4;
+}
+
+.fillform-page.dark
+.question-number.active {
+    background:
+        linear-gradient(
+            145deg,
+            #1f5fa4,
+            #2e7fd0
+        );
+
+    color: #ffffff;
+
+    border-color: #5d9de2;
+}
+
+.fillform-page.dark
+.question-number.answered {
+    background: #21463a;
+
+    border-color: #2e604d;
+
+    color: #66d39d;
+}
+
+.fillform-page.dark
+.sidebar-completion {
+    background: #1f2d40;
+
+    border-color: #314157;
+}
+
+.fillform-page.dark
+.sidebar-completion-heading span {
+    color: #93a5b9;
+}
+
+.fillform-page.dark
+.sidebar-completion-track {
+    background: #334155;
+}
+
+.fillform-page.dark
+.question-legend {
+    border-color: #304055;
+}
+
+.fillform-page.dark
+.legend {
+    background: #1f2d40;
+
+    border-color: #3c4d62;
+}
+
+.fillform-page.dark
+.question-card {
+    background: #172234;
+
+    border-color: #2c3b50;
+
+    box-shadow:
+        0 10px 28px rgba(0, 0, 0, 0.18);
+}
+
+.fillform-page.dark
+.question-header-icon {
+    background: #203a58;
+
+    color: #6db2ff;
+}
+
+.fillform-page.dark
+.question-image {
+    background: #1f2d40;
+
+    border-color: #314157;
+}
+
+.fillform-page.dark
+.option-card {
+    background: #1b283b;
+
+    border-color: #314157;
+}
+
+.fillform-page.dark
+.option-card:hover {
+    background: #213147;
+
+    border-color: #45617e;
+
+    box-shadow:
+        0 7px 17px rgba(0, 0, 0, 0.14);
+}
+
+.fillform-page.dark
+.option-card.selected {
+    background:
+        linear-gradient(
+            145deg,
+            #203955,
+            #1b2f47
+        );
+
+    border-color: #5794d4;
+}
+
+.fillform-page.dark
+.option-letter {
+    background: #25384f;
+
+    color: #8ec4ff;
+}
+
+.fillform-page.dark
+.option-card.selected
+.option-letter {
+    background: #367fc7;
+
+    color: #ffffff;
+}
+
+.fillform-page.dark
+.fillform-warning {
+    background: #3b311f;
+
+    border-color: #5b4b2a;
+
+    color: #f2bd57;
+}
+
+.fillform-page.dark
+.question-footer {
+    border-color: #304055;
+}
+
+.fillform-page.dark
+.previous-btn {
+    background: #1b283b;
+
+    border-color: #314157;
+
+    color: #a4b5c8;
+}
+
+.fillform-page.dark
+.previous-btn:hover:not(:disabled) {
+    background: #22334a;
+
+    border-color: #486784;
+
+    color: #d7e2ee;
+}
+
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 1000px) {
+
+    .fillform-header {
+        grid-template-columns:
+            minmax(210px, 0.8fr)
+            minmax(260px, 1.1fr)
+            135px;
+
+        gap: 18px;
+
+        padding:
+            14px 20px;
+    }
+
+    .fillform-body {
+        grid-template-columns:
+            205px minmax(0, 1fr);
+    }
+
+    .question-sidebar {
+        padding:
+            24px 16px 28px;
+    }
+
+    .question-grid {
+        grid-template-columns:
+            repeat(3, minmax(0, 1fr));
+    }
+
+    .question-content {
+        padding:
+            22px 20px 36px;
+    }
+
+    .question-card {
+        padding: 22px;
+    }
+
+}
+
+
+/* =========================================================
+   MOBILE / SMALL TABLET
+========================================================= */
+
+@media (max-width: 760px) {
+
+    .fillform-header {
+        position: relative;
+
+        min-height: auto;
+
+        padding:
+            15px 14px;
+
+        grid-template-columns:
+            1fr auto;
+
+        grid-template-areas:
+            "brand timer"
+            "progress progress";
+
+        gap: 14px 12px;
+    }
+
+    .fillform-brand {
+        grid-area: brand;
+    }
+
+    .fillform-header-progress {
+        grid-area: progress;
+    }
+
+    .fillform-timer {
+        grid-area: timer;
+
+        min-height: 49px;
+
+        padding:
+            0 11px;
+    }
+
+    .fillform-timer span {
+        display: none;
+    }
+
+    .fillform-timer strong {
+        font-size: 16px;
+    }
+
+    .fillform-logo-wrapper {
+        width: 40px;
+        height: 40px;
+
+        border-radius: 11px;
+    }
+
+    .fillform-logo-wrapper img {
+        width: 28px;
+        height: 28px;
+    }
+
+    .fillform-brand-text h2 {
+        font-size: 19px;
+    }
+
+    .fillform-brand-text span {
+        max-width: 210px;
+
+        font-size: 10px;
+    }
+
+    .fillform-body {
+        display: block;
+
+        min-height: auto;
+    }
+
+    .question-sidebar {
+        position: relative;
+        top: auto;
+
+        min-height: auto;
+
+        padding:
+            15px 12px;
+
+        border-right: none;
+        border-bottom:
+            1px solid #dfe7f0;
+
+        box-shadow:
+            0 7px 16px rgba(24, 51, 84, 0.04);
+    }
+
+    .sidebar-heading {
+        margin-bottom: 13px;
+    }
+
+    .sidebar-heading h3 {
+        font-size: 16px;
+    }
+
+    .question-grid {
+        grid-template-columns:
+            repeat(auto-fit, minmax(42px, 1fr));
+
+        margin-bottom: 14px;
+    }
+
+    .question-number {
+        max-height: 48px;
+
+        aspect-ratio: auto;
+
+        min-height: 42px;
+    }
+
+    .sidebar-completion {
+        margin-bottom: 13px;
+
+        padding: 11px;
+    }
+
+    .question-legend {
+        padding-top: 13px;
+
+        flex-direction: row;
+        flex-wrap: wrap;
+
+        gap: 9px 15px;
+    }
+
+    .question-content {
+        padding:
+            14px 12px 28px;
+    }
+
+    .question-card {
+        padding: 17px;
+
+        border-radius: 17px;
+    }
+
+    .question-header {
+        margin-bottom: 17px;
+    }
+
+    .question-header h1 {
+        font-size: 21px;
+    }
+
+    .question-header-icon {
+        width: 43px;
+        height: 43px;
+
+        border-radius: 12px;
+    }
+
+    .question-header-icon svg {
+        width: 17px;
+        height: 17px;
+    }
+
+    .option-card {
+        min-height: 58px;
+
+        padding:
+            9px 11px;
+
+        border-radius: 13px;
+    }
+
+    .option-letter {
+        width: 35px;
+        height: 35px;
+
+        border-radius: 10px;
+    }
+
+    .option-text {
+        font-size: 12px;
+    }
+
+    .question-footer {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+
+        gap: 8px;
+    }
+
+    .question-footer-status {
+        grid-column: 1 / -1;
+        grid-row: 1;
+
+        padding-bottom: 2px;
+    }
+
+    .previous-btn {
+        grid-column: 1;
+        grid-row: 2;
+    }
+
+    .next-btn,
+    .submit-btn {
+        grid-column: 2;
+        grid-row: 2;
+    }
+
+}
+
+
+/* =========================================================
+   SMALL MOBILE
+========================================================= */
+
+@media (max-width: 430px) {
+
+    .fillform-header {
+        padding:
+            13px 11px;
+
+        gap: 12px 8px;
+    }
+
+    .fillform-brand-text span {
+        max-width: 145px;
+    }
+
+    .fillform-timer {
+        min-height: 44px;
+
+        padding:
+            0 9px;
+
+        gap: 7px;
+    }
+
+    .fillform-timer strong {
+        font-size: 14px;
+    }
+
+    .fillform-progress-information span {
+        font-size: 10px;
+    }
+
+    .fillform-progress-information strong {
+        font-size: 11px;
+    }
+
+    .question-sidebar {
+        padding:
+            13px 10px;
+    }
+
+    .question-content {
+        padding:
+            11px 9px 24px;
+    }
+
+    .question-card {
+        padding: 14px;
+    }
+
+    .question-header {
+        gap: 10px;
+    }
+
+    .question-header h1 {
+        font-size: 18px;
+    }
+
+    .question-instruction {
+        font-size: 10px;
+    }
+
+    .question-header-icon {
+        display: none;
+    }
+
+    .question-image {
+        border-radius: 13px;
+    }
+
+    .options-list {
+        gap: 9px;
+    }
+
+    .option-card {
+        min-height: 54px;
+
+        padding:
+            8px 10px;
+    }
+
+    .option-letter {
+        width: 32px;
+        height: 32px;
+
+        font-size: 12px;
+    }
+
+    .option-text {
+        font-size: 11px;
+    }
+
+    .question-footer {
+        margin-top: 18px;
+        padding-top: 14px;
+    }
+
+    .previous-btn,
+    .next-btn,
+    .submit-btn {
+        height: 40px;
+
+        padding:
+            0 10px;
+
+        font-size: 10px;
+    }
+
+}
+
+
+/* =========================================================
+   ACCESSIBILITY
+========================================================= */
+
+.fillform-page button:focus-visible,
+.fillform-page label:has(input:focus-visible) {
+    outline:
+        2px solid rgba(45, 119, 190, 0.55);
+
+    outline-offset: 3px;
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .fillform-page *,
+    .fillform-page *::before,
+    .fillform-page *::after {
+        animation: none !important;
+
+        transition: none !important;
+
+        scroll-behavior: auto !important;
+    }
+
+}
+/* =========================================================
+   TEXT ANSWER
+========================================================= */
+
+.fillform-text-answer {
+    width: 100%;
+    margin-top: 22px;
+}
+
+.fillform-text-answer input,
+.fillform-text-answer textarea {
+    width: 100%;
+
+    border: 1px solid #dce6f2;
+    border-radius: 14px;
+
+    background: #ffffff;
+    color: #22344d;
+
+    font-family: inherit;
+    font-size: 16px;
+    line-height: 1.6;
+
+    outline: none;
+
+    transition:
+        border-color .2s ease,
+        box-shadow .2s ease,
+        background .2s ease;
+}
+
+.fillform-text-answer input {
+    height: 54px;
+    padding: 0 17px;
+}
+
+.fillform-text-answer textarea {
+    min-height: 145px;
+    padding: 15px 17px;
+    resize: vertical;
+}
+
+.fillform-text-answer input:focus,
+.fillform-text-answer textarea:focus {
+    border-color: #2f78d0;
+    box-shadow: 0 0 0 4px rgba(47, 120, 208, .1);
+}
+
+.fillform-text-answer input::placeholder,
+.fillform-text-answer textarea::placeholder {
+    color: #9aa8b9;
+}
+
+
+/* =========================================================
+   RATING ANSWER
+========================================================= */
+
+.fillform-rating-list {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: wrap;
+
+    gap: 12px;
+
+    margin-top: 22px;
+}
+
+.fillform-rating-btn {
+    width: 76px;
+    min-height: 76px;
+
+    border: 1px solid #dce6f2;
+    border-radius: 14px;
+
+    background: #ffffff;
+    color: #a6b1bf;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    gap: 7px;
+
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition:
+        transform .2s ease,
+        border-color .2s ease,
+        background .2s ease,
+        color .2s ease,
+        box-shadow .2s ease;
+}
+
+.fillform-rating-btn svg {
+    font-size: 23px;
+}
+
+.fillform-rating-btn:hover {
+    transform: translateY(-2px);
+
+    border-color: #f4c85b;
+    color: #e5a900;
+
+    box-shadow: 0 8px 18px rgba(30, 57, 91, .08);
+}
+
+.fillform-rating-btn.selected {
+    border-color: #f0b51e;
+
+    background: #fff8df;
+    color: #db9d00;
+
+    box-shadow: 0 0 0 3px rgba(240, 181, 30, .11);
+}
+
+
+/* =========================================================
+   EMPTY FORM
+========================================================= */
+
+.fillform-empty-state {
+    min-height: 100vh;
+
+    padding: 30px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    text-align: center;
+}
+
+.fillform-empty-state > svg {
+    margin-bottom: 15px;
+
+    color: #347dcc;
+    font-size: 44px;
+}
+
+.fillform-empty-state h2 {
+    margin: 0 0 8px;
+
+    color: #263a52;
+    font-size: 24px;
+}
+
+.fillform-empty-state p {
+    margin: 0 0 20px;
+
+    color: #8796a9;
+    font-size: 15px;
+}
+
+.fillform-empty-state button {
+    height: 43px;
+    padding: 0 18px;
+
+    border: none;
+    border-radius: 11px;
+
+    background: #276fbd;
+    color: #ffffff;
+
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+
+/* =========================================================
+   DARK MODE
+========================================================= */
+
+.fillform-page.dark
+.fillform-text-answer input,
+
+.fillform-page.dark
+.fillform-text-answer textarea,
+
+.fillform-page.dark
+.fillform-rating-btn {
+    border-color: #314258;
+
+    background: #172234;
+    color: #eef4fb;
+}
+
+.fillform-page.dark
+.fillform-text-answer input::placeholder,
+
+.fillform-page.dark
+.fillform-text-answer textarea::placeholder {
+    color: #74859a;
+}
+
+.fillform-page.dark
+.fillform-rating-btn.selected {
+    border-color: #c5931b;
+
+    background: #3b3118;
+    color: #f6c94c;
+}
+
+.fillform-page.dark
+.fillform-empty-state h2 {
+    color: #f1f5f9;
+}
+
+.fillform-page.dark
+.fillform-empty-state p {
+    color: #93a3b7;
+}
+
+.question-title-html {
+  display: inline;
+}
+
+.question-title-html p {
+  margin: 0;
+  display: inline;
+}
+
+.question-title-html .ql-video {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  margin: 12px 0;
+  border: none;
+  border-radius: 10px;
+}
+
+.question-title-html a {
+  color: #2874bc;
+  text-decoration: underline;
+  word-break: break-word;
+}
+
+.question-title-html .katex {
+  font-size: 1.05em;
+}
+
+.question-title-html .ql-video {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  margin: 12px 0;
+  border: none;
+  border-radius: 10px;
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 600px) {
+
+    .fillform-rating-btn {
+        width: 60px;
+        min-height: 65px;
+    }
+
+    .fillform-text-answer input {
+        height: 50px;
+    }
+
+}
+/* === FillFormImageZoom.css === */
+/* =========================================================
+   HIDOCS — FILL FORM IMAGE ZOOM
+   Add-on for FillForm.jsx
+========================================================= */
+
+.question-image-wrapper {
+  width: 100%;
+}
+
+button.question-image.question-image-clickable {
+  position: relative;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  display: block;
+  cursor: zoom-in;
+  font: inherit;
+  text-align: inherit;
+}
+
+button.question-image.question-image-clickable img {
+  display: block;
+  width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+button.question-image.question-image-clickable:hover img {
+  transform: scale(1.012);
+  filter: brightness(0.94);
+}
+
+.question-image-zoom-hint {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  background: rgba(8, 24, 45, 0.82);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0;
+  transform: translateY(5px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  pointer-events: none;
+}
+
+.question-image-clickable:hover .question-image-zoom-hint,
+.question-image-clickable:focus-visible .question-image-zoom-hint {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* =========================================================
+   FULL SCREEN VIEWER
+========================================================= */
+
+.image-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  padding: 22px;
+  background: rgba(3, 10, 22, 0.86);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+}
+
+.image-preview-modal {
+  width: min(1180px, 100%);
+  height: min(850px, calc(100vh - 44px));
+  min-height: 360px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 22px;
+  background: #111d2d;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.46);
+}
+
+.image-preview-header {
+  min-height: 66px;
+  padding: 13px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.image-preview-header > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.image-preview-header span {
+  color: #7d93ac;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.image-preview-header strong {
+  color: #ffffff;
+  font-size: 17px;
+}
+
+.image-preview-close {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #dce7f3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.image-preview-close:hover {
+  background: #dc4444;
+  color: #ffffff;
+  transform: rotate(3deg);
+}
+
+.image-preview-toolbar {
+  min-height: 56px;
+  padding: 9px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #162437;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.image-preview-toolbar button {
+  min-width: 38px;
+  height: 36px;
+  padding: 0 11px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #dce8f5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.image-preview-toolbar button:hover:not(:disabled) {
+  background: #2f7bc5;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.image-preview-toolbar button:disabled {
+  opacity: 0.34;
+  cursor: not-allowed;
+}
+
+.image-preview-zoom-value {
+  min-width: 60px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 9px;
+  background: #0c1725;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* This area deliberately scrolls when the image is zoomed. */
+.image-preview-scroll-area {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 24px;
+  background: radial-gradient(circle at center, #1c2b3f, #09131f);
+  scrollbar-width: thin;
+  scrollbar-color: #55708d #111d2d;
+}
+
+.image-preview-scroll-area::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+
+.image-preview-scroll-area::-webkit-scrollbar-track {
+  background: #111d2d;
+}
+
+.image-preview-scroll-area::-webkit-scrollbar-thumb {
+  border: 3px solid #111d2d;
+  border-radius: 999px;
+  background: #55708d;
+}
+
+.image-preview-canvas {
+  min-height: 100%;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.16s ease, min-width 0.16s ease;
+}
+
+.image-preview-canvas img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: none;
+  object-fit: contain;
+  transform-origin: center center;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.image-preview-footer {
+  min-height: 60px;
+  padding: 11px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: #111d2d;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.image-preview-footer span {
+  color: #8396ab;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.image-preview-footer button {
+  min-width: 88px;
+  height: 36px;
+  border: 0;
+  border-radius: 9px;
+  background: #2e79c3;
+  color: #ffffff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 680px) {
+  .image-preview-overlay {
+    padding: 7px;
+  }
+
+  .image-preview-modal {
+    height: calc(100vh - 14px);
+    border-radius: 16px;
+  }
+
+  .image-preview-toolbar {
+    padding: 8px 10px;
+  }
+
+  .image-preview-reset span {
+    display: none;
+  }
+
+  .image-preview-scroll-area {
+    padding: 12px;
+  }
+
+  .image-preview-footer {
+    padding: 10px 12px;
+  }
+
+  .image-preview-footer span {
+    max-width: 72%;
+  }
+
+  .question-image-zoom-hint {
+    right: 9px;
+    bottom: 9px;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .question-image-clickable img,
+  .question-image-zoom-hint,
+  .image-preview-toolbar button,
+  .image-preview-close,
+  .image-preview-canvas {
+    transition: none !important;
+  }
+}
+/* === FillFormSpecialAnswers.css === */
+/* =========================================================
+   FILL FORM — SPECIAL ANSWERS
+   MATH + CODE
+========================================================= */
+
+.fillform-special-answer {
+  width: 100%;
+  margin-top: 18px;
+  padding: 18px;
+
+  border: 1px solid #dce6f1;
+  border-radius: 17px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #ffffff,
+      #f9fbfe
+    );
+
+  box-shadow:
+    0 5px 16px rgba(24, 50, 84, 0.05);
+}
+
+
+/* =========================================================
+   COMMON HEADING
+========================================================= */
+
+.special-answer-heading {
+  width: 100%;
+
+  margin-bottom: 15px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 11px;
+}
+
+.special-answer-icon {
+  width: 40px;
+  height: 40px;
+
+  flex-shrink: 0;
+
+  border-radius: 11px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 16px;
+}
+
+.special-answer-icon.math {
+  background: #e8f2fd;
+  color: #347bc1;
+}
+
+.special-answer-icon.code {
+  background: #efe9ff;
+  color: #7758cf;
+}
+
+.special-answer-heading > div:nth-child(2) {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 2px;
+}
+
+.special-answer-heading > div:nth-child(2) > span {
+  color: #8796aa;
+
+  font-size: 9px;
+  font-weight: 700;
+
+  letter-spacing: 0.9px;
+
+  text-transform: uppercase;
+}
+
+.special-answer-heading > div:nth-child(2) > strong {
+  color: #2c4058;
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+
+/* =========================================================
+   MATH INPUT
+========================================================= */
+
+.math-answer-input-wrapper {
+  width: 100%;
+}
+
+.math-answer-input-wrapper > label {
+  display: block;
+
+  margin-bottom: 7px;
+
+  color: #52677f;
+
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.math-answer-input-wrapper > input {
+  width: 100%;
+  min-height: 48px;
+
+  padding: 0 14px;
+
+  border: 1px solid #d5e0ec;
+  border-radius: 11px;
+
+  outline: none;
+
+  background: #ffffff;
+  color: #293d55;
+
+  font-family:
+    "Consolas",
+    "Courier New",
+    monospace;
+
+  font-size: 14px;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.math-answer-input-wrapper > input:focus {
+  border-color: #4b8fd6;
+
+  box-shadow:
+    0 0 0 4px rgba(75, 143, 214, 0.1);
+}
+
+.math-answer-input-wrapper > input:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.math-answer-input-wrapper > small {
+  display: block;
+
+  margin-top: 8px;
+
+  color: #8897aa;
+
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.math-answer-input-wrapper code {
+  padding: 2px 5px;
+
+  border: 1px solid #dce7f2;
+  border-radius: 5px;
+
+  background: #f1f6fb;
+  color: #315f8d;
+
+  font-family:
+    "Consolas",
+    "Courier New",
+    monospace;
+
+  font-size: 10px;
+}
+
+
+/* =========================================================
+   MATH PREVIEW
+========================================================= */
+
+.math-preview-box {
+  width: 100%;
+  min-height: 116px;
+
+  margin-top: 14px;
+  padding: 13px;
+
+  border: 1px dashed #cbd9e8;
+  border-radius: 12px;
+
+  background: #f8fbff;
+}
+
+.math-preview-box.has-value {
+  border-style: solid;
+
+  background:
+    linear-gradient(
+      145deg,
+      #f7fbff,
+      #ffffff
+    );
+}
+
+.math-preview-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 10px;
+
+  margin-bottom: 11px;
+}
+
+.math-preview-heading span {
+  color: #536a82;
+
+  font-size: 10px;
+  font-weight: 700;
+
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.math-preview-heading small {
+  min-height: 21px;
+
+  padding: 0 7px;
+
+  border-radius: 999px;
+
+  background: #e8f2fd;
+  color: #347bc1;
+
+  display: inline-flex;
+  align-items: center;
+
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.math-preview-content {
+  min-height: 57px;
+
+  overflow-x: auto;
+
+  padding: 10px;
+
+  border-radius: 9px;
+
+  background: #ffffff;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #243a53;
+
+  text-align: center;
+}
+
+.math-preview-content .katex-display {
+  margin: 0;
+}
+
+.math-preview-empty {
+  min-height: 56px;
+
+  color: #96a4b5;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  font-size: 10px;
+}
+
+
+/* =========================================================
+   CODE ANSWER
+========================================================= */
+
+.code-answer-lines {
+  margin-left: auto;
+
+  min-height: 25px;
+
+  padding: 0 9px;
+
+  border-radius: 999px;
+
+  background: #f0ecff;
+  color: #755aca;
+
+  display: inline-flex;
+  align-items: center;
+
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.code-editor-shell {
+  width: 100%;
+
+  overflow: hidden;
+
+  border: 1px solid #263b55;
+  border-radius: 13px;
+
+  background: #0f1b2a;
+
+  box-shadow:
+    0 8px 20px rgba(12, 29, 48, 0.12);
+}
+
+.code-editor-topbar {
+  min-height: 38px;
+
+  padding: 0 12px;
+
+  border-bottom:
+    1px solid rgba(255, 255, 255, 0.08);
+
+  background: #152438;
+
+  display: flex;
+  align-items: center;
+
+  gap: 6px;
+}
+
+.code-editor-topbar > span {
+  width: 8px;
+  height: 8px;
+
+  border-radius: 50%;
+}
+
+.code-editor-topbar > span:nth-child(1) {
+  background: #f06a6a;
+}
+
+.code-editor-topbar > span:nth-child(2) {
+  background: #eabf5b;
+}
+
+.code-editor-topbar > span:nth-child(3) {
+  background: #5bc985;
+}
+
+.code-editor-topbar > strong {
+  margin-left: 6px;
+
+  color: #8799ae;
+
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.code-editor-shell textarea {
+  display: block;
+
+  width: 100%;
+  min-height: 260px;
+
+  resize: vertical;
+
+  padding: 15px 16px;
+
+  border: none;
+  outline: none;
+
+  background: #0f1b2a;
+  color: #dce8f5;
+
+  font-family:
+    "Consolas",
+    "Courier New",
+    monospace;
+
+  font-size: 14px;
+  line-height: 1.7;
+
+  tab-size: 2;
+
+  caret-color: #6eb5ff;
+}
+
+.code-editor-shell textarea::placeholder {
+  color: #62758d;
+
+  opacity: 1;
+}
+
+.code-editor-shell textarea:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+.code-answer-help {
+  width: 100%;
+
+  margin-top: 10px;
+
+  color: #8494a8;
+
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  font-size: 10px;
+}
+
+.code-answer-help svg {
+  flex-shrink: 0;
+
+  color: #7758cf;
+}
+
+
+/* =========================================================
+   DARK MODE
+========================================================= */
+
+.fillform-page.dark
+.fillform-special-answer {
+  border-color: #2d4057;
+
+  background:
+    linear-gradient(
+      145deg,
+      #172539,
+      #142133
+    );
+
+  box-shadow:
+    0 7px 18px rgba(0, 0, 0, 0.17);
+}
+
+.fillform-page.dark
+.special-answer-heading
+> div:nth-child(2)
+> strong {
+  color: #edf3fa;
+}
+
+.fillform-page.dark
+.special-answer-heading
+> div:nth-child(2)
+> span {
+  color: #8ea0b6;
+}
+
+.fillform-page.dark
+.special-answer-icon.math {
+  background: #203d5d;
+  color: #72b6ff;
+}
+
+.fillform-page.dark
+.special-answer-icon.code {
+  background: #352b5a;
+  color: #b09bff;
+}
+
+.fillform-page.dark
+.math-answer-input-wrapper
+> label {
+  color: #b3c0cf;
+}
+
+.fillform-page.dark
+.math-answer-input-wrapper
+> input {
+  border-color: #364b64;
+
+  background: #101c2c;
+  color: #edf4fb;
+}
+
+.fillform-page.dark
+.math-answer-input-wrapper
+> input:focus {
+  border-color: #5a9dde;
+
+  background: #142235;
+}
+
+.fillform-page.dark
+.math-answer-input-wrapper
+> small {
+  color: #8698ad;
+}
+
+.fillform-page.dark
+.math-answer-input-wrapper code {
+  border-color: #334a64;
+
+  background: #1c3047;
+  color: #8bc3ff;
+}
+
+.fillform-page.dark
+.math-preview-box {
+  border-color: #354a63;
+
+  background: #101d2c;
+}
+
+.fillform-page.dark
+.math-preview-box.has-value {
+  background:
+    linear-gradient(
+      145deg,
+      #132338,
+      #101c2b
+    );
+}
+
+.fillform-page.dark
+.math-preview-heading span {
+  color: #a4b3c4;
+}
+
+.fillform-page.dark
+.math-preview-heading small {
+  background: #203d5d;
+  color: #79baff;
+}
+
+.fillform-page.dark
+.math-preview-content {
+  background: #0c1725;
+  color: #edf4fb;
+}
+
+.fillform-page.dark
+.math-preview-empty {
+  color: #75879b;
+}
+
+.fillform-page.dark
+.code-answer-lines {
+  background: #302852;
+  color: #b6a5ff;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 680px) {
+
+  .fillform-special-answer {
+    padding: 14px;
+
+    border-radius: 14px;
+  }
+
+  .special-answer-heading {
+    align-items: flex-start;
+  }
+
+  .special-answer-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .code-answer-lines {
+    font-size: 8px;
+  }
+
+  .code-editor-shell textarea {
+    min-height: 220px;
+
+    padding: 13px;
+
+    font-size: 13px;
+  }
+
+  .math-preview-content {
+    justify-content: flex-start;
+
+    text-align: left;
+  }
+
+}
+`;
 
 // =========================================================
 // KATEX GLOBAL SETUP
@@ -187,35 +3267,6 @@ const getStoredArray = (key) => {
 
     return [];
   }
-};
-
-const NEW_FORM_STORAGE_KEY = "hidocs_new_form";
-
-const findLocalForm = (formId) => {
-  const storedForms = getStoredArray(FORMS_STORAGE_KEY);
-  const backupForms = getStoredArray(NEW_FORM_STORAGE_KEY);
-  const deletedFormIds = getStoredArray(DELETED_FORMS_STORAGE_KEY).map(
-    (deletedId) => String(deletedId)
-  );
-
-  if (
-    deletedFormIds.includes(
-      String(formId)
-    )
-  ) {
-    return null;
-  }
-
-  return (
-    [...storedForms, ...backupForms, ...defaultForms]
-      .reverse()
-      .find(
-        (form) =>
-          form &&
-          typeof form === "object" &&
-          String(form.id) === String(formId)
-      ) || null
-  );
 };
 
 // =========================================================
@@ -772,36 +3823,11 @@ const normalizeTimer = (form) => {
   const timerSetting =
     form.settings?.timer && typeof form.settings.timer === "object" ? form.settings.timer : {};
 
-  const durationCandidate = Number(
-    form.timerDuration ??
-    form.settings?.timerDuration ??
-    timerSetting.duration ??
-    form.duration_minutes ??
-    form.settings?.duration_minutes ??
-    form.duration ??
-    form.settings?.duration ??
-    0
-  );
-
-  const timerEnabledFromDuration = Number.isFinite(durationCandidate) && durationCandidate > 0;
-
   const timerEnabled =
-    form.timerEnabled ??
-    form.settings?.timerEnabled ??
-    timerSetting.enabled ??
-    form.is_timer_enabled ??
-    form.settings?.is_timer_enabled ??
-    timerEnabledFromDuration;
+    form.timerEnabled ?? form.settings?.timerEnabled ?? timerSetting.enabled ?? Boolean(form.duration);
 
   const rawDuration = Number(
-    form.timerDuration ??
-    form.settings?.timerDuration ??
-    timerSetting.duration ??
-    form.duration_minutes ??
-    form.settings?.duration_minutes ??
-    form.duration ??
-    form.settings?.duration ??
-    20
+    form.timerDuration ?? form.settings?.timerDuration ?? timerSetting.duration ?? form.duration ?? 20
   );
 
   const duration = Number.isFinite(rawDuration)
@@ -809,7 +3835,7 @@ const normalizeTimer = (form) => {
     : 20;
 
   return {
-    enabled: Boolean(timerEnabled) || timerEnabledFromDuration,
+    enabled: Boolean(timerEnabled),
     duration,
   };
 };
@@ -931,7 +3957,6 @@ function FillForm() {
   // =========================================================
 
   const [form, setForm] = useState(null);
-  const [formIsLocal, setFormIsLocal] = useState(false);
   const [isLoadingForm, setIsLoadingForm] = useState(true);
 
   useEffect(() => {
@@ -946,69 +3971,20 @@ function FillForm() {
         const apiForm = formRes.data.data;
         const apiQuestions = questionsRes.data.data || [];
 
-        const timerDurationValue = Number(
-          apiForm.duration_minutes ??
-          apiForm.timerDuration ??
-          apiForm.settings?.timerDuration ??
-          apiForm.settings?.timer?.duration ??
-          apiForm.duration ??
-          apiForm.settings?.duration ??
-          0
-        );
-
-        const timerEnabledValue =
-          apiForm.timer_enabled ??
-          apiForm.timerEnabled ??
-          apiForm.settings?.timerEnabled ??
-          apiForm.settings?.timer?.enabled ??
-          (Number.isFinite(timerDurationValue) && timerDurationValue > 0);
-
         const mapped = normalizeForm({
-          ...apiForm,
           id: apiForm.id,
           title: apiForm.title,
           description: apiForm.description,
           customLink: apiForm.custom_url,
           type: apiForm.type,
           active: apiForm.status === "ACTIVE",
-          timerEnabled: Boolean(timerEnabledValue),
-          timerDuration: Number.isFinite(timerDurationValue) && timerDurationValue > 0 ? timerDurationValue : 20,
-          settings: {
-            ...(apiForm.settings || {}),
-            timerEnabled: Boolean(timerEnabledValue),
-            timerDuration: Number.isFinite(timerDurationValue) && timerDurationValue > 0 ? timerDurationValue : 20,
-            timer: {
-              ...(apiForm.settings?.timer || {}),
-              enabled: Boolean(timerEnabledValue),
-              duration: Number.isFinite(timerDurationValue) && timerDurationValue > 0 ? timerDurationValue : 20,
-            },
-          },
           questions: apiQuestions.map(mapApiQuestionForFill),
         });
 
-        if (isMounted) {
-          setForm(mapped);
-          setFormIsLocal(false);
-        }
+        if (isMounted) setForm(mapped);
       } catch (error) {
         console.error("Gagal memuat form:", error);
-        const localForm = findLocalForm(id);
-        if (isMounted && localForm) {
-          setForm(
-            normalizeForm({
-              ...localForm,
-              id: localForm.id || id,
-              title: String(localForm.title || "").trim() || "Untitled Form",
-              type: localForm.type || localForm.category || "Form",
-              active: localForm.active !== false,
-              questions: Array.isArray(localForm.questions) ? localForm.questions : [],
-            })
-          );
-          setFormIsLocal(true);
-        } else if (isMounted) {
-          setForm(null);
-          setFormIsLocal(false);
-        }
+        if (isMounted) setForm(null);
       } finally {
         if (isMounted) setIsLoadingForm(false);
       }
@@ -1308,47 +4284,6 @@ function FillForm() {
       const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
       const respondentEmail = currentUser.email || "";
 
-      if (formIsLocal) {
-        const submittedAtValue = new Date().toISOString();
-        const scoreResult = calculateFormScore(questions, answersRef.current);
-
-        const result = submitForm({
-          formId: form.id,
-          title: form.title,
-          answers: answersRef.current,
-          answeredQuestions: Object.values(answersRef.current).filter(hasAnswerValue).length,
-          totalQuestions,
-          status: "completed",
-          submittedAt: submittedAtValue,
-          resultMode: form.resultMode,
-          score: scoreResult.score,
-          maxScore: scoreResult.maxScore,
-          percentage: scoreResult.percentage,
-          correctAnswers: scoreResult.correctAnswers,
-          incorrectAnswers: scoreResult.incorrectAnswers,
-          scoredQuestions: scoreResult.scoredQuestions,
-          questionResults: scoreResult.questionResults,
-          gradingEnabled: scoreResult.gradingEnabled,
-        });
-
-        if (!result?.success) {
-          throw new Error(result?.message || "Gagal menyimpan submit form.");
-        }
-
-        navigate("/submit-success", {
-          replace: true,
-          state: {
-            formId: form.id,
-            formTitle: form.title,
-            submittedAt: submittedAtValue,
-            status: "completed",
-            score: scoreResult.score,
-            totalQuestions,
-          },
-        });
-        return;
-      }
-
       const answerPayload = questions.map((q) => {
         const answerValue = answersRef.current[q.id];
         const isChoiceType = ["multiple", "checkbox", "yesno"].includes(q.type);
@@ -1376,35 +4311,14 @@ function FillForm() {
 
       const result = response.data.data;
 
-      const savedSubmission = submitForm({
-        formId: form.id,
-        title: form.title,
-        answers: answersRef.current,
-        answeredQuestions: Object.values(answersRef.current).filter(hasAnswerValue).length,
-        totalQuestions,
-        status: "completed",
-        submittedAt: result?.submitted_at || new Date().toISOString(),
-        resultMode: form.resultMode,
-        score: result?.total_score ?? 0,
-        maxScore: result?.max_score ?? 0,
-        percentage: result?.percentage ?? 0,
-        correctAnswers: result?.correct_answers ?? 0,
-        scoredQuestions: result?.scored_questions ?? 0,
-        questionResults: result?.question_results || result?.answers || [],
-      });
-
-      if (!savedSubmission?.success) {
-        console.warn("Gagal menyimpan submit form ke history lokal:", savedSubmission?.message);
-      }
-
       navigate("/submit-success", {
         replace: true,
         state: {
           formId: form.id,
           formTitle: form.title,
-          submittedAt: result?.submitted_at || new Date().toISOString(),
+          submittedAt: result.submitted_at,
           status: "completed",
-          score: result?.total_score ?? 0,
+          score: result.total_score,
           totalQuestions,
         },
       });
@@ -1417,7 +4331,7 @@ function FillForm() {
         "Terjadi kesalahan saat mengirim form. Silakan coba lagi."
       );
     }
-  }, [form, canFillForm, isSubmitting, navigate, questions, totalQuestions, formIsLocal]);
+  }, [form, canFillForm, isSubmitting, navigate, questions, totalQuestions]);
 
   // =========================================================
   // HANDLE TIMER EXPIRED
@@ -2205,6 +5119,7 @@ const sanitizedQuestionTitleMarkup = useMemo(
 
     return (
       <div className={darkMode ? "fillform-page dark" : "fillform-page"}>
+      <style>{fillFormStyles}</style>
         <div className="fillform-empty-state">
           {isClosed || isInactive ? <FaExclamationTriangle /> : <FaClock />}
 
@@ -2245,6 +5160,7 @@ const sanitizedQuestionTitleMarkup = useMemo(
   if (totalQuestions === 0) {
     return (
       <div className={darkMode ? "fillform-page dark" : "fillform-page"}>
+      <style>{fillFormStyles}</style>
         <div className="fillform-empty-state">
           <FaClipboardList />
 
@@ -2266,6 +5182,7 @@ const sanitizedQuestionTitleMarkup = useMemo(
 
   return (
     <div className={darkMode ? "fillform-page dark" : "fillform-page"}>
+      <style>{fillFormStyles}</style>
       {/* =====================================================
           HEADER
       ===================================================== */}

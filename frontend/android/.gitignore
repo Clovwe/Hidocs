@@ -33,9 +33,6 @@ migrate_working_dir/
 /build/
 /coverage/
 
-# Env (jangan commit .env berisi URL/secret lokal)
-.env
-
 # Symbolication related
 app.*.symbols
 

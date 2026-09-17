@@ -1,12 +1,12 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../app_theme.dart';
 import '../providers/form_provider.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/user_form_detail_screen.dart';
-import '../l10n/app_localizations.dart';
 import 'scan_form_screen.dart';
+import '../l10n/app_localizations.dart';
 
 class LinkInputScreen extends StatefulWidget {
   const LinkInputScreen({super.key});
@@ -32,12 +32,14 @@ class _LinkInputScreenState extends State<LinkInputScreen> {
   Future<void> _resolveLink() async {
     if (_isResolving || _hasHandled) return;
 
+    final l10n = AppLocalizations.of(context);
+
     final raw = _linkController.text.trim();
     _linkFocus.unfocus();
 
     if (raw.isEmpty) {
       _showMessage(
-        'Masukkan link form terlebih dahulu.',
+        l10n.enterLinkFirst,
         isError: true,
       );
       return;
@@ -46,7 +48,7 @@ class _LinkInputScreenState extends State<LinkInputScreen> {
     final code = extractFormCode(raw);
     if (code.isEmpty) {
       _showMessage(
-        'Link tidak valid. Periksa kembali dan coba lagi.',
+        l10n.scanFailed,
         isError: true,
       );
       return;
@@ -67,25 +69,15 @@ class _LinkInputScreenState extends State<LinkInputScreen> {
 
     if (form == null) {
       _showMessage(
-        formProvider.error ?? 'Form tidak ditemukan.',
+        formProvider.error ?? l10n.formNotFound,
         isError: true,
       );
       return;
     }
-
-    if (!form.isActive) {
-      _showMessage(
-        'Form ini sudah ditutup dan tidak bisa diisi.',
-        isError: true,
-      );
-      return;
-    }
-
-    final l10n = AppLocalizations.of(context);
 
     if (formProvider.hasSubmitted(form.id)) {
       _showMessage(
-        l10n.alreadySubmittedForm,
+        l10n.alreadySubmitted,
         isError: false,
       );
       return;
@@ -138,12 +130,16 @@ class _LinkInputScreenState extends State<LinkInputScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final l10n = AppLocalizations.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Mengambil warna header/primary tema yang aktif
+    final headerColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
+      backgroundColor: isDark ? AppTheme.darkBg : AppTheme.surfaceLight,
       appBar: AppBar(
-        title: Text(l10n.enterLink),
+        title: Text(l10n.linkInput),
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -156,18 +152,18 @@ class _LinkInputScreenState extends State<LinkInputScreen> {
                 height: 84,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: AppTheme.info.withValues(alpha: 0.10),
+                  color: headerColor.withValues(alpha: 0.10),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.link_rounded,
                   size: 38,
-                  color: AppTheme.info,
+                  color: headerColor,
                 ),
               ),
               const SizedBox(height: 20),
               Text(
-                l10n.enterFormLinkTitle,
+                l10n.enterFormLink,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 20,
@@ -177,7 +173,7 @@ class _LinkInputScreenState extends State<LinkInputScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                l10n.enterFormLinkDesc,
+                l10n.pasteLinkToOpen,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 13,
@@ -191,21 +187,25 @@ class _LinkInputScreenState extends State<LinkInputScreen> {
                 keyboardType: TextInputType.url,
                 textInputAction: TextInputAction.go,
                 onSubmitted: (_) => _resolveLink(),
+                style: TextStyle(
+                  color: isDark ? AppTheme.darkTextPrimary : AppTheme.textPrimary,
+                ),
                 decoration: InputDecoration(
-                  hintText: 'hidocs.app/f/<slug> atau URL lengkap',
+                  hintText: 'hidocs.app/f/<slug> atau URL',
                   hintStyle: TextStyle(
                     fontSize: 13,
                     color: isDark
                         ? AppTheme.darkTextSecondary
                         : AppTheme.textMuted,
                   ),
-                  prefixIcon: const Icon(
+                  prefixIcon: Icon(
                     Icons.qr_code_2_rounded,
                     size: 20,
+                    color: isDark ? AppTheme.darkTextMuted : AppTheme.textMuted,
                   ),
                   filled: true,
                   fillColor: isDark
-                      ? AppTheme.darkSurface
+                      ? AppTheme.darkCard
                       : AppTheme.surfaceCard,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -223,8 +223,8 @@ class _LinkInputScreenState extends State<LinkInputScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(
-                      color: AppTheme.primary,
+                    borderSide: BorderSide(
+                      color: headerColor,
                       width: 1.5,
                     ),
                   ),
@@ -233,12 +233,31 @@ class _LinkInputScreenState extends State<LinkInputScreen> {
               const SizedBox(height: 16),
               SizedBox(
                 height: 52,
-                child: CustomButton(
-                  text: l10n.openForm,
-                  icon: Icons.arrow_forward_rounded,
-                  isLoading: _isResolving,
-                  onPressed: _resolveLink,
-                  height: 52,
+                child: Theme(
+                  data: Theme.of(context).copyWith(
+                    colorScheme: Theme.of(context).colorScheme.copyWith(
+                          primary: headerColor,
+                        ),
+                    elevatedButtonTheme: ElevatedButtonThemeData(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: headerColor,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                    filledButtonTheme: FilledButtonThemeData(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: headerColor,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                  child: CustomButton(
+                text: 'Buka Form',
+                    icon: Icons.arrow_forward_rounded,
+                    isLoading: _isResolving,
+                    onPressed: _resolveLink,
+                    height: 52,
+                  ),
                 ),
               ),
             ],

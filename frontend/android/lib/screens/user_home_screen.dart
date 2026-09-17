@@ -1,20 +1,20 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../app_theme.dart';
+import '../l10n/app_localizations.dart';
+import '../models/form_model.dart';
+import '../models/response_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/form_provider.dart';
-import '../models/form_model.dart';
-import '../widgets/custom_card.dart';
-import '../widgets/hidocs_logo.dart';
-import '../l10n/app_localizations.dart';
+import '../providers/response_provider.dart';
+import '../widgets/dynamic_header.dart';
 
+import 'history_screen.dart';
+import 'history_detail_screen.dart';
 import 'link_input_screen.dart';
 import 'scan_form_screen.dart';
 import 'settings_screen.dart';
-import 'history_detail_screen.dart';
-import '../providers/response_provider.dart';
-import '../models/response_model.dart';
 
 class UserHomeScreen extends StatefulWidget {
   const UserHomeScreen({super.key});
@@ -29,251 +29,152 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final fp = context.read<FormProvider>();
-      final rp = context.read<ResponseProvider>();
-      await Future.wait([
-        fp.loadForms(),
-        rp.loadMySubmissions(),
-      ]);
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
     final auth = Provider.of<AuthProvider>(context);
-    final formProvider = Provider.of<FormProvider>(context);
-    final l10n = AppLocalizations.of(context);
+    final fp = Provider.of<FormProvider>(context);
 
-    final List<Widget> screens = [
-      _DashboardTab(auth: auth),
-      _HistoryTab(
-        formProvider: formProvider,
+    final tabs = [
+      _HomeTab(
+        auth: auth,
+        fp: fp,
       ),
+      const HistoryScreen(),
       const SettingsScreen(),
     ];
 
     return Scaffold(
-      body: screens[_tab],
-      bottomNavigationBar: _BottomNav(
-        currentIndex: _tab,
-        onTap: (index) {
-          setState(() {
-            _tab = index;
-          });
+      backgroundColor: isDark ? AppTheme.darkBg : AppTheme.surfaceLight,
+      body: IndexedStack(
+        index: _tab,
+        children: tabs,
+      ),
+      bottomNavigationBar: _BottomBar(
+        current: _tab,
+        cs: cs,
+        isDark: isDark,
+        onTap: (i) {
+          setState(() => _tab = i);
+
+          if (i == 0 && mounted) {
+          }
         },
-        items: [
-          _NavItem(
-            icon: Icons.home_outlined,
-            activeIcon: Icons.home_rounded,
-            label: l10n.home,
-          ),
-          _NavItem(
-            icon: Icons.history_outlined,
-            activeIcon: Icons.history_rounded,
-            label: l10n.history,
-          ),
-          _NavItem(
-            icon: Icons.settings_outlined,
-            activeIcon: Icons.settings_rounded,
-            label: l10n.profile,
-          ),
-        ],
       ),
     );
   }
 }
 
-class _DashboardTab extends StatelessWidget {
+class _HomeTab extends StatelessWidget {
   final AuthProvider auth;
+  final FormProvider fp;
 
-  const _DashboardTab({
+  const _HomeTab({
     required this.auth,
+    required this.fp,
   });
-
-  Future<void> _refreshData(BuildContext context) async {
-    final formProvider = context.read<FormProvider>();
-    final responseProvider = context.read<ResponseProvider>();
-    await Future.wait([
-      formProvider.loadForms(forceRefresh: true),
-      responseProvider.loadMySubmissions(forceRefresh: true),
-    ]);
-  }
 
   @override
   Widget build(BuildContext context) {
-    final responseProvider = Provider.of<ResponseProvider>(context);
-    final formProvider = Provider.of<FormProvider>(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context);
+    final rp = Provider.of<ResponseProvider>(context);
 
-    final Map<String, ResponseModel> responseMap = {};
-    final currentId = (auth.currentUser?.id ?? '').trim().toLowerCase();
-    final currentEmail = (auth.currentUser?.email ?? '').trim().toLowerCase();
+    final name = auth.currentUser?.name.split(' ').first ?? l10n.user;
 
-    for (final r in responseProvider.responses) {
-      if (formProvider.isFormDeleted(r.formId)) continue;
+    final id = (auth.currentUser?.id ?? '').toLowerCase();
 
-      final rId = r.respondentId.trim().toLowerCase();
-      final rEmail = r.respondentEmail.trim().toLowerCase();
+    final email = (auth.currentUser?.email ?? '').toLowerCase();
 
-      final matchesUser = (currentId.isNotEmpty && rId == currentId) ||
-          (currentEmail.isNotEmpty && rEmail == currentEmail) ||
-          (rId.isEmpty && rEmail.isEmpty) ||
-          (currentId.isEmpty && currentEmail.isEmpty);
-
-      if (matchesUser) {
-        responseMap[r.formId] = r;
-      }
-    }
-
-    final allUserResponses = responseMap.values.toList();
-    allUserResponses.sort((a, b) => b.submittedAt.compareTo(a.submittedAt));
-    final recentResponses = allUserResponses.take(5).toList();
-
-    final isDark =
-        Theme.of(context).brightness ==
-            Brightness.dark;
-
-    final isLoading = formProvider.isLoading;
+    final recent = rp.responses
+        .where(
+          (r) =>
+              r.respondentId.toLowerCase() == id ||
+              r.respondentEmail.toLowerCase() == email,
+        )
+        .toList()
+      ..sort(
+        (a, b) => b.submittedAt.compareTo(a.submittedAt),
+      );
 
     return Scaffold(
+      backgroundColor: isDark ? AppTheme.darkBg : AppTheme.surfaceLight,
       body: RefreshIndicator(
-        onRefresh: () => _refreshData(context),
-        color: AppTheme.primary,
+        onRefresh: () async {},
+        color: cs.primary,
         child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            SliverAppBar(
-              expandedHeight: 220,
-              pinned: true,
-              backgroundColor: AppTheme.primary,
-              elevation: 0,
-              automaticallyImplyLeading: false,
-              flexibleSpace: FlexibleSpaceBar(
-                background: _HeaderBg(
-                  auth: auth,
-                ),
-              ),
-              title: Row(
-                children: [
-                  const HiDocsLogo(
-                    size: 28,
-                    showShadow: false,
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    l10n.appName,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ],
+            SliverToBoxAdapter(
+              child: _header(
+                context,
+                name,
+                isDark,
               ),
             ),
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _QuickAccessCard(
-                            icon: Icons.qr_code_scanner_rounded,
-                            title: l10n.scanQR,
-                            subtitle: l10n.scanQRSubtitle,
-                            color: AppTheme.primary,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      const ScanFormScreen(),
-                                ),
-                              );
-                            },
-                          ),
+              child: _actions(
+                context,
+                isDark,
+                cs,
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                20,
+                35,
+                20,
+                100,
+              ),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate(
+                  [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        l10n.lastHistory,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.2,
+                          color: isDark
+                              ? AppTheme.darkTextPrimary
+                              : AppTheme.textPrimary,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _QuickAccessCard(
-                            icon: Icons.link_rounded,
-                            title: l10n.enterLink,
-                            subtitle: l10n.enterLinkSubtitle,
-                            color: AppTheme.info,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      const LinkInputScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Text(
-                          l10n.recentForms,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: isDark
-                                ? AppTheme.darkTextPrimary
-                                : AppTheme.textPrimary,
-                          ),
-                        ),
-                        if (isLoading) ...[
-                          const SizedBox(width: 10),
-                          const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                AppTheme.primary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    if (recentResponses.isEmpty)
-                      _EmptyState(
-                        icon: Icons.history_rounded,
-                        title: l10n.noRecentForms,
-                        subtitle: l10n.noRecentFormsDesc,
+                    if (recent.isEmpty)
+                      _emptyState(
+                        isDark,
+                        Icons.history_rounded,
+                        l10n.noFormsYetU,
                       )
                     else
-                      ...recentResponses
-                          .where((r) =>
-                              formProvider.getFormById(r.formId) != null ||
-                              r.formTitle.isNotEmpty)
-                          .map((response) {
-                        final form = formProvider.getFormById(response.formId) ??
-                            FormModel(
-                              id: response.formId,
-                              title: response.formTitle,
-                              creatorId: '',
-                              scheduledOpen: response.submittedAt,
-                              scheduledClose: response.submittedAt,
-                              createdAt: response.submittedAt,
-                            );
-                        return _HistoryCard(
-                          form: form,
-                          response: response,
-                        );
-                      }),
+                      _RecentHistoryList(
+                        isDark: isDark,
+                        items: recent.take(5).map((r) {
+                          final form =
+                              fp.getFormById(r.formId) ??
+                                  FormModel(
+                                    id: r.formId,
+                                    title: r.formTitle,
+                                    creatorId: '',
+                                    scheduledOpen: r.submittedAt,
+                                    scheduledClose: r.submittedAt,
+                                    createdAt: r.submittedAt,
+                                  );
+
+                          return (form, r);
+                        }).toList(),
+                      ),
                   ],
                 ),
               ),
@@ -283,568 +184,168 @@ class _DashboardTab extends StatelessWidget {
       ),
     );
   }
-}
 
-class _HeaderBg extends StatelessWidget {
-  final AuthProvider auth;
-
-  const _HeaderBg({
-    required this.auth,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final name = auth.currentUser?.name ?? 'User';
-    final l10n = AppLocalizations.of(context);
-
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppTheme.primaryDark,
-            AppTheme.primary,
-            AppTheme.primaryLight,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            top: -30,
-            right: -40,
-            child: _blob(
-              160,
-              Colors.white.withValues(
-                alpha: 0.05,
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 20,
-            left: -60,
-            child: _blob(
-              140,
-              Colors.white.withValues(
-                alpha: 0.04,
-              ),
-            ),
-          ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                24,
-                60,
-                24,
-                20,
-              ),
-              child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-                mainAxisAlignment:
-                    MainAxisAlignment.end,
-                children: [
-                  Text(
-                    '${l10n.hello}, ${name.split(' ').first}! 👋',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    l10n.userHomeSubtitle(name),
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.white.withValues(
-                        alpha: 0.65,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _blob(
-    double size,
-    Color color,
+  Widget _header(
+    BuildContext context,
+    String name,
+    bool isDark,
   ) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color,
-      ),
-    );
-  }
-}
-
-class _HistoryTab extends StatelessWidget {
-  final FormProvider formProvider;
-
-  const _HistoryTab({
-    required this.formProvider,
-  });
-
-  Future<void> _refreshData(BuildContext context) async {
-    final formProv = context.read<FormProvider>();
-    final responseProv = context.read<ResponseProvider>();
-    await Future.wait([
-      formProv.loadForms(forceRefresh: true),
-      responseProv.loadMySubmissions(forceRefresh: true),
-    ]);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final responseProvider = Provider.of<ResponseProvider>(context);
-    final auth = Provider.of<AuthProvider>(context, listen: false);
     final l10n = AppLocalizations.of(context);
+    final top =
+        MediaQuery.of(context).padding.top;
 
-    final Map<String, ResponseModel> responseMap = {};
-    final currentId = (auth.currentUser?.id ?? '').trim().toLowerCase();
-    final currentEmail = (auth.currentUser?.email ?? '').trim().toLowerCase();
-
-    for (final r in responseProvider.responses) {
-      if (formProvider.isFormDeleted(r.formId)) continue;
-
-      final rId = r.respondentId.trim().toLowerCase();
-      final rEmail = r.respondentEmail.trim().toLowerCase();
-
-      final matchesUser = (currentId.isNotEmpty && rId == currentId) ||
-          (currentEmail.isNotEmpty && rEmail == currentEmail) ||
-          (rId.isEmpty && rEmail.isEmpty) ||
-          (currentId.isEmpty && currentEmail.isEmpty);
-
-      if (matchesUser) {
-        responseMap[r.formId] = r;
-      }
-    }
-
-    final myResponses = responseMap.values.toList();
-    myResponses.sort((a, b) => b.submittedAt.compareTo(a.submittedAt));
-
-    final isLoading = formProvider.isLoading;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          l10n.history,
-        ),
-        actions: [
-          if (isLoading)
-            const Padding(
-              padding: EdgeInsets.only(right: 16.0),
-              child: Center(
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      AppTheme.primary,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
+    return DynamicHeader(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        top + 16,
+        20,
+        28,
       ),
-      body: RefreshIndicator(
-        onRefresh: () => _refreshData(context),
-        color: AppTheme.primary,
-        child: myResponses.isEmpty
-            ? ListView(
-                children: [
-                  const SizedBox(height: 100),
-                  _EmptyState(
-                    icon: Icons.history_rounded,
-                    title: l10n.noSubmissionHistory,
-                    subtitle: l10n.noSubmissionHistoryDesc,
-                  ),
-                ],
-              )
-            : ListView.builder(
-                padding: const EdgeInsets.fromLTRB(
-                  20,
-                  16,
-                  20,
-                  100,
-                ),
-                itemCount: myResponses.length,
-                itemBuilder: (_, index) {
-                  final response = myResponses[index];
-                  final form = formProvider.getFormById(response.formId);
-                  if (form == null && response.formTitle.isEmpty) {
-                    return const SizedBox.shrink();
-                  }
-                  final displayForm = form ??
-                      FormModel(
-                        id: response.formId,
-                        title: response.formTitle,
-                        creatorId: '',
-                        scheduledOpen: response.submittedAt,
-                        scheduledClose: response.submittedAt,
-                        createdAt: response.submittedAt,
-                      );
-
-                  return _HistoryCard(
-                    form: displayForm,
-                    response: response,
-                  );
-                },
-              ),
-      ),
-    );
-  }
-}
-
-class _HistoryCard extends StatelessWidget {
-  final FormModel form;
-  final ResponseModel response;
-
-  const _HistoryCard({
-    required this.form,
-    required this.response,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark =
-        Theme.of(context).brightness ==
-            Brightness.dark;
-    final l10n = AppLocalizations.of(context);
-
-    final primaryTextColor = isDark
-        ? AppTheme.darkTextPrimary
-        : AppTheme.textPrimary;
-
-    final secondaryTextColor = isDark
-        ? AppTheme.darkTextSecondary
-        : AppTheme.textSecondary;
-
-    final subDate = response.submittedAt;
-    final dateStr = '${subDate.day} ${_monthName(subDate.month, l10n.isIndonesian)} ${subDate.year}';
-    final timeStr = '${subDate.hour.toString().padLeft(2, '0')}:${subDate.minute.toString().padLeft(2, '0')}';
-
-    return CustomCard(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => HistoryDetailScreen(
-              form: form,
-              response: response,
-            ),
-          ),
-        );
-      },
-      margin: const EdgeInsets.only(
-        bottom: 14,
-      ),
-      padding: const EdgeInsets.all(18),
       child: Row(
         crossAxisAlignment:
-            CrossAxisAlignment.start,
+            CrossAxisAlignment.center,
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppTheme.success.withValues(
-                alpha: 0.10,
-              ),
-              borderRadius:
-                  BorderRadius.circular(14),
-            ),
-            child: const Icon(
-              Icons.check_circle_rounded,
-              size: 23,
-              color: AppTheme.success,
-            ),
-          ),
-          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment:
                   CrossAxisAlignment.start,
               children: [
                 Text(
-                  form.title,
+                  l10n.helloWave,
                   style: TextStyle(
-                    fontSize: 15,
-                    fontWeight:
-                        FontWeight.w700,
-                    color: primaryTextColor,
+                    fontSize: 13,
+                    color:
+                        Colors.white.withValues(
+                      alpha: 0.75,
+                    ),
                   ),
-                  maxLines: 2,
-                  overflow:
-                      TextOverflow.ellipsis,
                 ),
-
-                const SizedBox(height: 6),
-
+                const SizedBox(height: 4),
                 Text(
-                  l10n.youHaveSubmitted,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: secondaryTextColor,
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today_outlined,
-                      size: 14,
-                      color: secondaryTextColor,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      dateStr,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: secondaryTextColor,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Icon(
-                      Icons.access_time_rounded,
-                      size: 14,
-                      color: secondaryTextColor,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      timeStr,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: secondaryTextColor,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.success
-                        .withValues(
-                      alpha: 0.08,
-                    ),
-                    borderRadius:
-                        BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisSize:
-                        MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.check_circle_outline,
-                        size: 15,
-                        color:
-                            AppTheme.success,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        l10n.submitted,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight:
-                              FontWeight.w700,
-                          color:
-                              AppTheme.success,
-                        ),
-                      ),
-                    ],
+                  name,
+                  style: const TextStyle(
+                    fontSize: 23,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: -0.4,
                   ),
                 ),
               ],
             ),
           ),
-          Icon(
-            Icons.chevron_right_rounded,
-            size: 20,
-            color: secondaryTextColor,
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SettingsScreen(),
+                ),
+              );
+            },
+            child: CircleAvatar(
+              radius: 25,
+              backgroundColor: Colors.white.withValues( alpha: 0.16 ),
+              child: Text(
+                auth.currentUser?.name.isNotEmpty == true
+                    ? auth.currentUser!.name[0].toUpperCase()
+                    : 'U',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  fontSize: 20,
+                ),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  static String _monthName(int month, bool isIndonesian) {
-    final monthsId = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
-    ];
-    final monthsEn = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    final months = isIndonesian ? monthsId : monthsEn;
-    return (month >= 1 && month <= 12) ? months[month - 1] : '';
-  }
-}
+  Widget _actions(
+    BuildContext context,
+    bool isDark,
+    ColorScheme cs,
+  ) {
+    final l10n = AppLocalizations.of(context);
+    final divider = isDark ? AppTheme.darkBorder : AppTheme.border;
 
-class _QuickAccessCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _QuickAccessCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark =
-        Theme.of(context).brightness ==
-            Brightness.dark;
-
-    final primaryTextColor = isDark
-        ? AppTheme.darkTextPrimary
-        : AppTheme.textPrimary;
-
-    final secondaryTextColor = isDark
-        ? AppTheme.darkTextSecondary
-        : AppTheme.textSecondary;
-
-    return CustomCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+    return Container(
+      color: isDark ? AppTheme.darkCard : Colors.white,
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      child: Row(
         children: [
+          Expanded(
+            child: _ActionItem(
+              label: l10n.scanQrAction,
+              icon: Icons.qr_code_scanner_rounded,
+              color: cs.primary,
+              isDark: isDark,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        const ScanFormScreen(),
+                  ),
+                );
+              },
+            ),
+          ),
           Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: color.withValues(
-                alpha: 0.10,
-              ),
-              borderRadius:
-                  BorderRadius.circular(13),
-            ),
-            child: Icon(
-              icon,
-              size: 22,
-              color: color,
-            ),
+            width: 1,
+            height: 40,
+            color: divider,
           ),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: primaryTextColor,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: TextStyle(
-              fontSize: 11,
-              color: secondaryTextColor,
+          Expanded(
+            child: _ActionItem(
+              label: l10n.pasteLinkAction,
+              icon: Icons.link_rounded,
+              color: cs.primary,
+              isDark: isDark,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        const LinkInputScreen(),
+                  ),
+                );
+              },
             ),
           ),
         ],
       ),
     );
   }
-}
 
-class _EmptyState extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  const _EmptyState({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark =
-        Theme.of(context).brightness ==
-            Brightness.dark;
-
-    return Center(
-      child: Padding(
-        padding:
-            const EdgeInsets.all(48),
+  Widget _emptyState(
+    bool isDark,
+    IconData icon,
+    String msg,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40),
+      child: Center(
         child: Column(
-          mainAxisSize:
-              MainAxisSize.min,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: AppTheme.primary
-                    .withValues(
-                  alpha: 0.07,
-                ),
-                borderRadius:
-                    BorderRadius.circular(24),
-              ),
-              child: Icon(
-                icon,
-                size: 36,
-                color: AppTheme.primary
-                    .withValues(
-                  alpha: 0.4,
-                ),
-              ),
+            Icon(
+              icon,
+              size: 32,
+              color: isDark
+                  ? AppTheme.darkTextMuted
+                  : AppTheme.border,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
             Text(
-              title,
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight:
-                    FontWeight.w700,
-                color: isDark
-                    ? AppTheme.darkTextPrimary
-                    : AppTheme.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              subtitle,
+              msg,
               style: TextStyle(
                 fontSize: 13,
                 color: isDark
-                    ? AppTheme.darkTextSecondary
+                    ? AppTheme.darkTextMuted
                     : AppTheme.textMuted,
               ),
-              textAlign:
-                  TextAlign.center,
             ),
           ],
         ),
@@ -853,90 +354,314 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _NavItem {
-  final IconData icon;
-  final IconData activeIcon;
-  final String label;
+class _RecentHistoryList extends StatelessWidget {
+  final bool isDark;
+  final List<(FormModel, ResponseModel)> items;
 
-  const _NavItem({
-    required this.icon,
-    required this.activeIcon,
-    required this.label,
-  });
-}
-
-class _BottomNav extends StatelessWidget {
-  final int currentIndex;
-  final ValueChanged<int> onTap;
-  final List<_NavItem> items;
-
-  const _BottomNav({
-    required this.currentIndex,
-    required this.onTap,
+  const _RecentHistoryList({
+    required this.isDark,
     required this.items,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isDark =
-        Theme.of(context).brightness ==
-            Brightness.dark;
-
     return Container(
-      margin:
-          const EdgeInsets.fromLTRB(
-        16,
-        0,
-        16,
-        12,
-      ),
       decoration: BoxDecoration(
-        color: isDark
-            ? AppTheme.darkCard
-            : AppTheme.surfaceCard,
-        borderRadius:
-            BorderRadius.circular(22),
+        color: isDark ? AppTheme.darkCard : Colors.white,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isDark
               ? AppTheme.darkBorder
               : AppTheme.border,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(
-              alpha: isDark
-                  ? 0.30
-                  : 0.08,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (int i = 0; i < items.length; i++) ...[
+            _RecentHistoryRow(
+              form: items[i].$1,
+              response: items[i].$2,
+              isDark: isDark,
             ),
-            blurRadius: 20,
-            offset:
-                const Offset(0, 6),
-          ),
+            if (i != items.length - 1)
+              Divider(
+                height: 1,
+                thickness: 1,
+                indent: 16,
+                endIndent: 16,
+                color: isDark
+                    ? AppTheme.darkBorder
+                    : AppTheme.border,
+              ),
+          ],
         ],
       ),
-      child: ClipRRect(
-        borderRadius:
-            BorderRadius.circular(22),
-        child: BottomNavigationBar(
-          currentIndex:
-              currentIndex,
-          onTap: onTap,
-          items: items
-              .map(
-                (item) =>
-                    BottomNavigationBarItem(
-                  icon: Icon(
-                    item.icon,
-                  ),
-                  activeIcon:
-                      Icon(
-                    item.activeIcon,
-                  ),
-                  label:
-                      item.label,
+    );
+  }
+}
+
+class _RecentHistoryRow extends StatelessWidget {
+  final FormModel form;
+  final ResponseModel response;
+  final bool isDark;
+
+  const _RecentHistoryRow({
+    required this.form,
+    required this.response,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final textPrimary = isDark
+        ? AppTheme.darkTextPrimary
+        : AppTheme.textPrimary;
+
+    final textMuted = isDark
+        ? AppTheme.darkTextMuted
+        : AppTheme.textMuted;
+
+    final dt = response.submittedAt;
+
+    final date =
+        '${dt.day}/${dt.month}/${dt.year} · '
+        '${dt.hour.toString().padLeft(2, '0')}:'
+        '${dt.minute.toString().padLeft(2, '0')}';
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => HistoryDetailScreen(
+                form: form,
+                response: response,
+              ),
+            ),
+          );
+        },
+        child: Padding(
+          padding:
+              const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                margin:
+                    const EdgeInsets.only(right: 12),
+                decoration:
+                    const BoxDecoration(
+                  color: AppTheme.success,
+                  shape: BoxShape.circle,
                 ),
-              )
-              .toList(),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      form.title,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow:
+                          TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      date,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              if (response.score > 0)
+                Text(
+                  '${response.score.round()}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.success,
+                  ),
+                )
+              else
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: isDark
+                      ? AppTheme.darkTextMuted
+                      : AppTheme.border,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionItem extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  const _ActionItem({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding:
+              const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 22,
+                color: color,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: isDark
+                      ? AppTheme.darkTextSecondary
+                      : AppTheme.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BottomBar extends StatelessWidget {
+  final int current;
+  final ColorScheme cs;
+  final bool isDark;
+  final ValueChanged<int> onTap;
+
+  const _BottomBar({
+    required this.current,
+    required this.cs,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
+    final items = [
+      (
+        Icons.home_outlined,
+        Icons.home_rounded,
+        l10n.home,
+      ),
+      (
+        Icons.history_outlined,
+        Icons.history_rounded,
+        l10n.history,
+      ),
+      (
+        Icons.person_outlined,
+        Icons.person_rounded,
+        l10n.profile,
+      ),
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color:
+            isDark ? AppTheme.darkCard : Colors.white,
+        border: Border(
+          top: BorderSide(
+            color: isDark
+                ? AppTheme.darkBorder
+                : AppTheme.border,
+          ),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 58,
+          child: Row(
+            children: List.generate(
+              items.length,
+              (i) {
+                final active = current == i;
+                final (off, on, label) =
+                    items[i];
+
+                final color = active
+                    ? cs.primary
+                    : isDark
+                        ? AppTheme.darkTextMuted
+                        : AppTheme.textMuted;
+
+                return Expanded(
+                  child: InkWell(
+                    onTap: () => onTap(i),
+                    child: Column(
+                      mainAxisAlignment:
+                          MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          active ? on : off,
+                          size: 22,
+                          color: color,
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: active
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: color,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
         ),
       ),
     );

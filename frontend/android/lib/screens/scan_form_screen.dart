@@ -32,10 +32,12 @@ class _ScanFormScreenState extends State<ScanFormScreen> {
   Future<void> _resolveCode(String raw) async {
     if (_isResolving || _hasHandled) return;
 
+    final l10n = AppLocalizations.of(context);
+
     final code = extractFormCode(raw);
     if (code.isEmpty) {
       _showMessage(
-        'Barcode / link tidak valid. Periksa kembali dan coba lagi.',
+        l10n.scanFailed,
         isError: true,
       );
       return;
@@ -56,25 +58,15 @@ class _ScanFormScreenState extends State<ScanFormScreen> {
 
     if (form == null) {
       _showMessage(
-        formProvider.error ?? 'Form tidak ditemukan.',
+        formProvider.error ?? l10n.formNotFound,
         isError: true,
       );
       return;
     }
-
-    if (!form.isActive) {
-      _showMessage(
-        'Form ini sudah ditutup dan tidak bisa diisi.',
-        isError: true,
-      );
-      return;
-    }
-
-    final l10n = AppLocalizations.of(context);
 
     if (formProvider.hasSubmitted(form.id)) {
       _showMessage(
-        l10n.alreadySubmittedForm,
+        l10n.alreadySubmitted,
         isError: false,
       );
       return;
@@ -128,10 +120,9 @@ class _ScanFormScreenState extends State<ScanFormScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.scanQR),
+        title: Text(l10n.scanQrCode),
       ),
       body: Stack(
         children: [
@@ -248,19 +239,15 @@ class _ScannerOverlayPainter extends CustomPainter {
 
     const cornerLength = 26.0;
     final path = Path()
-      // top-left
       ..moveTo(frame.left, frame.top + cornerLength)
       ..lineTo(frame.left, frame.top)
       ..lineTo(frame.left + cornerLength, frame.top)
-      // top-right
       ..moveTo(frame.right - cornerLength, frame.top)
       ..lineTo(frame.right, frame.top)
       ..lineTo(frame.right, frame.top + cornerLength)
-      // bottom-right
       ..moveTo(frame.right, frame.bottom - cornerLength)
       ..lineTo(frame.right, frame.bottom)
       ..lineTo(frame.right - cornerLength, frame.bottom)
-      // bottom-left
       ..moveTo(frame.left + cornerLength, frame.bottom)
       ..lineTo(frame.left, frame.bottom)
       ..lineTo(frame.left, frame.bottom - cornerLength);
@@ -275,6 +262,8 @@ class _ScannerOverlayPainter extends CustomPainter {
 class _ScannerHintCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 32),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -282,15 +271,15 @@ class _ScannerHintCard extends StatelessWidget {
         color: Colors.black.withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(30),
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.qr_code_scanner_rounded, size: 18, color: Colors.white),
-          SizedBox(width: 8),
+          const Icon(Icons.qr_code_scanner_rounded, size: 18, color: Colors.white),
+          const SizedBox(width: 8),
           Flexible(
             child: Text(
-              'Arahkan kamera ke barcode / QR code form',
-              style: TextStyle(fontSize: 12, color: Colors.white),
+              l10n.scanInstruction,
+              style: const TextStyle(fontSize: 12, color: Colors.white),
             ),
           ),
         ],

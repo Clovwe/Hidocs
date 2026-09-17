@@ -1,33 +1,17 @@
-import 'dart:math' as dartmath;
-
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+﻿import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AppConstants {
-  static const String appName = 'HiDocs!';
+  static const String appName    = 'HiDocs!';
   static const String appVersion = '1.0.0';
 
-  /// Base URL untuk API backend.
-  /// WAJIB diset di file .env dengan key API_BASE_URL
-  /// Lihat .env.example untuk contoh konfigurasi
+  static const String _port     = '8080';
+  static const String _apiPath  = '/api/v1';
+  static const String _deviceIp = '10.10.18.156';
+
   static String get appBaseUrl {
-    final envUrl = dotenv.env['API_BASE_URL']?.trim();
-    
-    if (envUrl == null || envUrl.isEmpty) {
-      throw Exception(
-        'API_BASE_URL tidak ditemukan'
-      );
+    if (kIsWeb) {
+      return 'http://localhost:$_port$_apiPath';
     }
-
-    // Hapus trailing slash untuk konsistensi
-    return envUrl.endsWith('/') 
-        ? envUrl.substring(0, envUrl.length - 1) 
-        : envUrl;
+    return 'http://$_deviceIp:$_port$_apiPath';
   }
-}
-
-String generateRandomLink(int length) {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  final random = dartmath.Random.secure();
-  return List.generate(length, (_) => chars[random.nextInt(chars.length)])
-      .join();
 }

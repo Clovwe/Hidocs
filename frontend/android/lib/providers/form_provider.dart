@@ -1,6 +1,4 @@
-import 'dart:typed_data';
-
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/form_model.dart';
@@ -9,51 +7,22 @@ import '../services/api_client.dart';
 class FormProvider extends ChangeNotifier {
   final List<FormModel> _forms = [];
   final Set<String> _submittedForms = {};
-  final Set<String> _deletedFormIds = {};
   bool _isLoading = false;
   String? _error;
 
-  List<FormModel> get forms =>
-      List.unmodifiable(_forms.where((f) => !_deletedFormIds.contains(f.id)));
+  List<FormModel> get forms => List.unmodifiable(_forms);
   bool get isLoading => _isLoading;
   String? get error => _error;
-  List<FormModel> get activeForms =>
-      _forms.where((f) => f.isActive && !_deletedFormIds.contains(f.id)).toList();
 
   FormProvider() {
     _loadSubmitted();
   }
 
-  Future<Set<String>> _getDeletedIds() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final deletedIds = prefs.getStringList('deleted_forms') ?? [];
-      _deletedFormIds.addAll(deletedIds);
-    } catch (_) {}
-    return _deletedFormIds;
-  }
-
-  String _currentUserId = '';
-
-  void updateUser(String userId) {
-    if (_currentUserId != userId) {
-      _currentUserId = userId;
-      _loadSubmitted();
-    }
-  }
-
   Future<void> _loadSubmitted() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final key = _currentUserId.isNotEmpty
-          ? 'submitted_forms_$_currentUserId'
-          : 'submitted_forms';
-      final ids = prefs.getStringList(key) ?? [];
-      _submittedForms
-        ..clear()
-        ..addAll(ids);
-      await _getDeletedIds();
-      _forms.removeWhere((f) => _deletedFormIds.contains(f.id));
+      final ids = prefs.getStringList('submitted_forms') ?? [];
+      _submittedForms.addAll(ids);
       notifyListeners();
     } catch (_) {}
   }
@@ -61,17 +30,7 @@ class FormProvider extends ChangeNotifier {
   Future<void> _saveSubmitted() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final key = _currentUserId.isNotEmpty
-          ? 'submitted_forms_$_currentUserId'
-          : 'submitted_forms';
-      await prefs.setStringList(key, _submittedForms.toList());
-    } catch (_) {}
-  }
-
-  Future<void> _saveDeleted() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList('deleted_forms', _deletedFormIds.toList());
+      await prefs.setStringList('submitted_forms', _submittedForms.toList());
     } catch (_) {}
   }
 
@@ -81,111 +40,6 @@ class FormProvider extends ChangeNotifier {
     _submittedForms.add(formId);
     _saveSubmitted();
     notifyListeners();
-  }
-
-  void clearUserCache() {
-    _currentUserId = '';
-    _submittedForms.clear();
-    _forms.clear();
-    notifyListeners();
-  }
-
-  DateTime? _lastFetchTime;
-  static const Duration _cacheDuration = Duration(seconds: 30);
-  static const Duration _minRefreshInterval = Duration(seconds: 15);
-  Future<void>? _activeLoadFuture;
-
-  Future<void> loadForms({bool forceRefresh = false}) async {
-    if (_activeLoadFuture != null) {
-      return _activeLoadFuture!;
-    }
-
-    final now = DateTime.now();
-    if (_lastFetchTime != null) {
-      final elapsed = now.difference(_lastFetchTime!);
-      if (!forceRefresh && elapsed < _cacheDuration) {
-        return;
-      }
-      if (forceRefresh && elapsed < _minRefreshInterval) {
-        return;
-      }
-    }
-
-    _activeLoadFuture = _performLoadForms();
-    try {
-      await _activeLoadFuture;
-    } finally {
-      _activeLoadFuture = null;
-    }
-  }
-
-  Future<void> _performLoadForms() async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    final deletedIds = await _getDeletedIds();
-
-    try {
-      final data = await ApiClient.get('/forms');
-      final list = (data is List) ? data : <dynamic>[];
-
-      _forms
-        ..clear()
-        ..addAll(
-            list.whereType<Map>().map((e) => FormModel.fromJson({...e})));
-      _forms.removeWhere((f) => deletedIds.contains(f.id));
-
-      _lastFetchTime = DateTime.now();
-      _isLoading = false;
-    } on ApiException catch (e) {
-      _error = e.message;
-      _isLoading = false;
-    } catch (_) {
-      _error = 'Koneksi gagal. Periksa jaringan atau server.';
-      _isLoading = false;
-    }
-
-    _forms.removeWhere((f) => deletedIds.contains(f.id));
-    notifyListeners();
-
-    // Auto-close: jika waktu tutup sudah lewat tapi raw masih aktif,
-    // update lokal langsung dan sinkron ke server (best-effort)
-    await _autoCloseExpiredForms();
-  }
-
-  /// Sinkronisasi form yang sudah expired ke server agar status konsisten.
-  /// Dipanggil setelah loadForms dan juga dari UI lifecycle (resume / periodic).
-  Future<void> syncExpiredForms() async {
-    await _autoCloseExpiredForms();
-    // Rebuild UI even if no server sync needed, karena getter isActive
-    // bergantung pada DateTime.now() dan perlu refresh pill.
-    notifyListeners();
-  }
-
-  Future<void> _autoCloseExpiredForms() async {
-    final expired = _forms.where((f) => f.isExpired && f.rawIsActive).toList();
-    if (expired.isEmpty) return;
-
-    // Update lokal dulu agar Dashboard langsung tampil Tutup
-    for (final f in expired) {
-      final idx = _forms.indexWhere((e) => e.id == f.id);
-      if (idx < 0) continue;
-      _forms[idx] = copyFormModel(f, isActive: false);
-    }
-    notifyListeners();
-
-    // Fire-and-forget sync ke backend (jangan blok UI lama)
-    for (final f in expired) {
-      try {
-        await ApiClient.put(
-          '/forms/${f.id}',
-          body: copyFormModel(f, isActive: false).toUpdateJson(),
-        );
-      } catch (_) {
-        // best-effort; tetap tampil Tutup secara lokal
-      }
-    }
   }
 
   Future<FormModel?> loadFormDetail(String formId) async {
@@ -222,7 +76,6 @@ class FormProvider extends ChangeNotifier {
     }
 
     notifyListeners();
-
     return null;
   }
 
@@ -262,262 +115,24 @@ class FormProvider extends ChangeNotifier {
     }
 
     notifyListeners();
-
     return null;
   }
 
-  List<FormModel> getFormsByCreator(String creatorId) {
-    return _forms
-        .where((f) =>
-            !_deletedFormIds.contains(f.id) &&
-            (creatorId.isEmpty || f.creatorId.isEmpty || f.creatorId == creatorId))
-        .toList();
-  }
-
-  bool isFormDeleted(String formId) => _deletedFormIds.contains(formId);
-
   FormModel? getFormById(String formId) {
-    if (_deletedFormIds.contains(formId)) return null;
     final index = _forms.indexWhere((f) => f.id == formId);
     return index >= 0 ? _forms[index] : null;
   }
 
-  Future<bool> createForm(FormModel form) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
+  Future<bool> verifyFormToken(String shortCode, String token) async {
     try {
-      var current = form;
-      Map<String, dynamic>? created;
-
-      for (var attempt = 0; attempt < 5; attempt++) {
-        try {
-          final res = await ApiClient.post('/forms', body: current.toCreateJson());
-          if (res is Map) {
-            created = Map<String, dynamic>.from(res);
-            break;
-          }
-        } on ApiException catch (e) {
-          if (attempt < 4 && _isDuplicateUrl(e.message)) {
-            current =
-                current.withCustomUrl('${_slugBase(current.slug)}-${attempt + 2}');
-            continue;
-          }
-          rethrow;
-        }
-      }
-
-      if (created == null) {
-        _error = 'Gagal membuat form.';
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
-
-      final formId = (created['id'] ?? '').toString();
-
-      var orderIndex = 1;
-      for (final question in current.questions) {
-        await ApiClient.post(
-          '/forms/$formId/questions',
-          body: question.toQuestionJson(orderIndex: orderIndex),
-        );
-        orderIndex++;
-      }
-
-      await ApiClient.put(
-        '/forms/$formId/settings',
-        body: current.toSettingsJson(),
+      final data = await ApiClient.post(
+        '/public/forms/${Uri.encodeComponent(shortCode)}/verify-token',
+        body: {'token': token},
       );
-
-      await loadForms();
-
-      _isLoading = false;
-      notifyListeners();
-
-      return true;
-    } on ApiException catch (e) {
-      _error = e.message;
-      _isLoading = false;
+      return data is Map && data['valid'] == true;
     } catch (_) {
-      _error = 'Koneksi gagal. Periksa jaringan atau server.';
-      _isLoading = false;
+      return false;
     }
-
-    notifyListeners();
-
-    return false;
-  }
-
-  Future<bool> updateForm(FormModel form) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      var current = form;
-
-      for (var attempt = 0; attempt < 5; attempt++) {
-        try {
-          await ApiClient.put(
-            '/forms/${form.id}',
-            body: current.toUpdateJson(),
-          );
-          break;
-        } on ApiException catch (e) {
-          if (attempt < 4 && _isDuplicateUrl(e.message)) {
-            current =
-                current.withCustomUrl('${_slugBase(current.slug)}-${attempt + 2}');
-            continue;
-          }
-          rethrow;
-        }
-      }
-
-      await ApiClient.put(
-        '/forms/${form.id}/settings',
-        body: current.toSettingsJson(),
-      );
-
-      // Preserve existing question IDs jika form sudah memiliki respons
-      // agar jawaban user tidak hilang. Jangan delete-recreate semua.
-      final existing = await ApiClient.get('/forms/${form.id}/questions');
-      final existingById = <String, Map<String, dynamic>>{};
-      if (existing is List) {
-        for (final q in existing.whereType<Map>()) {
-          final qid = (q['id'] ?? '').toString();
-          if (qid.isNotEmpty) existingById[qid] = Map<String, dynamic>.from(q);
-        }
-      }
-
-      final currentIds = current.questions.map((q) => q.id).toSet();
-
-      // Hapus hanya yang benar-benar dihapus creator
-      for (final qid in existingById.keys) {
-        if (!currentIds.contains(qid)) {
-          try {
-            await ApiClient.delete('/questions/$qid');
-          } catch (_) {}
-        }
-      }
-
-      var orderIndex = 1;
-      for (final question in current.questions) {
-        final isExistingUuid = RegExp(
-          r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
-          caseSensitive: false,
-        ).hasMatch(question.id);
-
-        if (isExistingUuid && existingById.containsKey(question.id)) {
-          // Update preserve ID → jawaban lama tetap terhubung
-          try {
-            await ApiClient.put(
-              '/questions/${question.id}',
-              body: question.toQuestionJson(orderIndex: orderIndex),
-            );
-          } catch (_) {
-            // fallback create jika gagal
-            await ApiClient.post(
-              '/forms/${form.id}/questions',
-              body: question.toQuestionJson(orderIndex: orderIndex),
-            );
-          }
-        } else {
-          await ApiClient.post(
-            '/forms/${form.id}/questions',
-            body: question.toQuestionJson(orderIndex: orderIndex),
-          );
-        }
-        orderIndex++;
-      }
-
-      await loadForms();
-
-      _isLoading = false;
-      notifyListeners();
-
-      return true;
-    } on ApiException catch (e) {
-      _error = e.message;
-    } catch (_) {
-      _error = 'Koneksi gagal. Periksa jaringan atau server.';
-    }
-
-    _isLoading = false;
-    notifyListeners();
-
-    return false;
-  }
-
-  Future<bool> deleteForm(String formId) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    final isServerForm = RegExp(
-      r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
-      caseSensitive: false,
-    ).hasMatch(formId);
-
-    if (isServerForm) {
-      try {
-        await ApiClient.delete('/forms/$formId');
-      } catch (_) {
-        _error = 'Gagal menghapus form di server. Coba lagi.';
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
-    }
-
-    _deletedFormIds.add(formId);
-    await _saveDeleted();
-
-    _forms.removeWhere((f) => f.id == formId || _deletedFormIds.contains(f.id));
-    _isLoading = false;
-    notifyListeners();
-
-    return true;
-  }
-
-  bool _isDuplicateUrl(String message) {
-    final m = message.toLowerCase();
-    return m.contains('idx_forms_custom_url') ||
-        m.contains('sqlstate 23505') ||
-        (m.contains('duplicate') && m.contains('custom_url'));
-  }
-
-  String _slugBase(String slug) => slug.replaceAll(RegExp(r'-\d+$'), '');
-
-  Future<bool> toggleFormActive(String formId) async {
-    final index = _forms.indexWhere((f) => f.id == formId);
-    if (index < 0) return false;
-
-    final form = _forms[index];
-    final newActive = !form.isActive;
-
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      final updated = copyFormModel(form, isActive: newActive);
-      await ApiClient.put('/forms/$formId', body: updated.toUpdateJson());
-      _forms[index] = updated;
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } on ApiException catch (e) {
-      _error = e.message;
-    } catch (_) {
-      _error = 'Koneksi gagal. Periksa jaringan atau server.';
-    }
-
-    _isLoading = false;
-    notifyListeners();
-
-    return false;
   }
 
   Future<Map<String, dynamic>?> submitForm(
@@ -525,6 +140,7 @@ class FormProvider extends ChangeNotifier {
     required String respondentEmail,
     required List<Map<String, dynamic>> answers,
     bool auto = false,
+    String token = '',
   }) async {
     _isLoading = true;
     _error = null;
@@ -534,6 +150,7 @@ class FormProvider extends ChangeNotifier {
       final data = await ApiClient.post('/forms/$formId/submit', body: {
         'respondent_email': respondentEmail,
         'passcode': '',
+        'token': token,
         'is_auto_submitted': auto,
         'answers': answers,
       });
@@ -557,120 +174,6 @@ class FormProvider extends ChangeNotifier {
     _isLoading = false;
     notifyListeners();
 
-    return null;
-  }
-
-  Future<List<Map<String, dynamic>>> loadResponses(String formId) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      final data = await ApiClient.get('/forms/$formId/responses');
-      _isLoading = false;
-      notifyListeners();
-
-      if (data is List) {
-        return data
-            .whereType<Map>()
-            .map((e) => Map<String, dynamic>.from(e))
-            .toList();
-      }
-
-      return [];
-    } on ApiException catch (e) {
-      _error = e.message;
-    } catch (_) {
-      _error = 'Koneksi gagal. Periksa jaringan atau server.';
-    }
-
-    _isLoading = false;
-    notifyListeners();
-
-    return [];
-  }
-
-  Future<Map<String, dynamic>?> loadAnalytics(String formId) async {
-    try {
-      final data = await ApiClient.get('/forms/$formId/analytics');
-      if (data is Map) {
-        return Map<String, dynamic>.from(data);
-      }
-    } on ApiException catch (e) {
-      _error = e.message;
-    } catch (_) {}
-
-    return null;
-  }
-
-  Future<Uint8List> exportResponses(String formId,
-      {String format = 'xlsx'}) async {
-    return ApiClient.getBytes('/forms/$formId/export', query: {
-      'format': format,
-    });
-  }
-
-  /// Import form from .docx file. Returns the created [FormModel] on success.
-  Future<FormModel?> importDocx({
-    String? filePath,
-    Uint8List? fileBytes,
-    String? fileName,
-  }) async {
-    return _importFile(
-      apiCall: () => ApiClient.importDocx(
-        filePath: filePath,
-        fileBytes: fileBytes,
-        fileName: fileName,
-      ),
-    );
-  }
-
-  /// Import form from .xlsx or .csv file. Returns the created [FormModel] on success.
-  Future<FormModel?> importExcel({
-    String? filePath,
-    Uint8List? fileBytes,
-    String? fileName,
-  }) async {
-    return _importFile(
-      apiCall: () => ApiClient.importExcel(
-        filePath: filePath,
-        fileBytes: fileBytes,
-        fileName: fileName,
-      ),
-    );
-  }
-
-  Future<FormModel?> _importFile({
-    required Future<dynamic> Function() apiCall,
-  }) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      final data = await apiCall();
-
-      if (data is Map) {
-        final form = FormModel.fromJson(Map<String, dynamic>.from(data));
-
-        _isLoading = false;
-        notifyListeners();
-
-        return form;
-      }
-
-      _error = 'Format respon tidak dikenal.';
-      _isLoading = false;
-      notifyListeners();
-      return null;
-    } on ApiException catch (e) {
-      _error = e.message;
-    } catch (e) {
-      _error = 'Koneksi gagal. Periksa jaringan atau server. ($e)';
-    }
-
-    _isLoading = false;
-    notifyListeners();
     return null;
   }
 

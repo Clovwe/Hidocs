@@ -6,2391 +6,709 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  useNavigate,
-} from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   FaArrowRight,
-  FaCheck,
   FaCheckCircle,
   FaClipboardList,
   FaClock,
   FaEye,
   FaFileAlt,
+  FaHourglassHalf,
+  FaLayerGroup,
+  FaLock,
   FaQrcode,
   FaRegCalendarAlt,
   FaSearch,
   FaTimes,
 } from "react-icons/fa";
-import {
-  Html5Qrcode,
-  Html5QrcodeSupportedFormats,
-} from "html5-qrcode";
-import {
-  getFormById,
-  getForms,
-  getPublicForm,
-} from "../api/formApi";
-import {
-  FormContext,
-} from "../context/FormContext";
-import {
-  ThemeContext,
-} from "../context/ThemeContext";
-import BottomNavigation from "../components/BottomNavigation";
-import "../assets/css/UserForms.css";
-// =========================================================
-// STORAGE KEYS
-// =========================================================
-const FORMS_STORAGE_KEY =
-  "hidocs_forms";
-const DELETED_FORMS_STORAGE_KEY =
-  "hidocs_deleted_forms";
-const SAVED_FORMS_STORAGE_KEY =
-  "hidocs_user_saved_forms";
-// =========================================================
-// DEFAULT FORMS
-// Semua default form dianggap public.
-// =========================================================
-const defaultForms = [
-  {
-    id: 1,
-    title: "Survey Kepuasan Mahasiswa 2024",
-    description: "Bagikan pendapatmu mengenai pengalaman dan pelayanan kampus.",
-    category: "Survey",
-    questions: 5,
-    duration: "5 min",
-    deadline: "15 Jul 2024",
-    active: true,
-    accent: "blue",
-    customLink: "survey-mhs-2024",
-    link: "hidocs.app/r/survey-mhs-2024",
-    createdAt: "2024-06-10T00:00:00.000Z",
-    accessMode: "public",
-    showInUserList: true,
-    qrOnly: false,
-  },
-  {
-    id: 2,
-    title: "Quiz Pemrograman Mobile - Flutter",
-    description: "Uji pemahamanmu mengenai dasar-dasar pengembangan Flutter.",
-    category: "Quiz",
-    questions: 10,
-    duration: "20 min",
-    deadline: "18 Jul 2024",
-    active: true,
-    accent: "purple",
-    customLink: "quiz-flutter-w5",
-    link: "hidocs.app/r/quiz-flutter-w5",
-    createdAt: "2024-06-11T00:00:00.000Z",
-    accessMode: "public",
-    showInUserList: true,
-    qrOnly: false,
-  },
-  {
-    id: 3,
-    title: "Form Pendaftaran Event Hackathon",
-    description: "Daftarkan dirimu untuk mengikuti kegiatan Hackathon HiDocs.",
-    category: "Registration",
-    questions: 7,
-    duration: "8 min",
-    deadline: "20 Jul 2024",
-    active: true,
-    accent: "green",
-    customLink: "hack24",
-    link: "hidocs.app/r/hack24",
-    createdAt: "2024-06-13T00:00:00.000Z",
-    accessMode: "public",
-    showInUserList: true,
-    qrOnly: false,
-  },
-];
-// =========================================================
-// ACCENT OPTIONS
-// =========================================================
-const accentOptions = [
-  "blue",
-  "purple",
-  "green",
-];
-// =========================================================
-// SAFE STORAGE READER
-// =========================================================
-const getStoredArray = (
-  key
-) => {
-  try {
-    const storedValue =
-      localStorage.getItem(
-        key
-      );
-    if (!storedValue) {
-      return [];
-    }
-    const parsedValue =
-      JSON.parse(
-        storedValue
-      );
-    return Array.isArray(
-      parsedValue
-    )
-      ? parsedValue
-      : [];
-  } catch (error) {
-    console.error(
-      `Gagal membaca ${key}:`,
-      error
-    );
-    return [];
-  }
+import { Html5Qrcode } from "html5-qrcode";
+import { FormContext } from "../context/FormContext";
+import { useTheme } from "../context/ThemeContext";
+import { getForms } from "../api/formApi";
+
+const userFormsStyles = `
+.user-forms-page, .user-forms-page * { box-sizing: border-box; }
+.user-forms-page {
+  --primary: var(--hp-pri, #2168b4);
+  --border: #e5ebf2; --surface: #ffffff; --background: transparent;
+  --text: #1d2c3f; --text-soft: #5e7188; --text-muted: #9aa7b7;
+  min-height: 100%; width: 100%;
+  color: var(--text); font-family: "Inter", sans-serif; font-size: 14px;
+}
+.user-forms-main-content { width: 100%; max-width: 1240px; margin: 0 auto; padding: 32px 36px 48px; }
+
+/* Header Banner */
+.user-forms-header {
+  position: relative; min-height: 148px; padding: 28px 32px; margin-bottom: 24px;
+  overflow: hidden; border-radius: 18px;
+  background: linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 70%, #4b9fe8) 100%);
+  box-shadow: 0 10px 30px rgba(15, 30, 50, 0.12);
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+}
+.user-forms-header-circle-1 {
+  position: absolute; width: 220px; height: 220px; right: 80px; top: -100px;
+  border: 1px solid rgba(255,255,255,.14); border-radius: 50%; pointer-events: none;
+}
+.user-forms-header-circle-2 {
+  position: absolute; width: 140px; height: 140px; right: -30px; bottom: -60px;
+  border-radius: 50%; background: rgba(255,255,255,.08); pointer-events: none;
+}
+.user-forms-header-content { position: relative; z-index: 2; max-width: 650px; }
+.user-forms-eyebrow {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: rgba(255,255,255,.85); font-size: 11px; font-weight: 700;
+  letter-spacing: .9px; text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.14); padding: 4px 10px; border-radius: 20px;
+}
+.user-forms-header h1 {
+  margin: 8px 0 6px; color: #ffffff; font-size: 28px; font-weight: 800; letter-spacing: -.5px;
+}
+.user-forms-header p {
+  margin: 0; color: rgba(255,255,255,.88); font-size: 13px; line-height: 1.5;
+}
+.user-forms-scan-btn {
+  position: relative; z-index: 2; height: 44px; padding: 0 18px;
+  border: none; border-radius: 12px; background: #ffffff; color: var(--primary);
+  display: inline-flex; align-items: center; gap: 9px;
+  font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.12); flex-shrink: 0;
+  transition: transform .15s, box-shadow .15s;
+}
+.user-forms-scan-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.18); }
+
+/* Toolbar: Search and Counts */
+.user-forms-toolbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  margin-bottom: 20px; flex-wrap: wrap;
+}
+.user-forms-toolbar-info h2 { margin: 0; color: var(--text); font-size: 18px; font-weight: 800; }
+.user-forms-toolbar-info p { margin: 3px 0 0; color: var(--text-soft); font-size: 12px; }
+
+.user-forms-search {
+  position: relative; width: 100%; max-width: 360px; min-width: 240px;
+}
+.user-forms-search-icon {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  color: var(--text-muted); font-size: 14px; pointer-events: none;
+}
+.user-forms-search input {
+  width: 100%; height: 42px; padding: 0 36px 0 38px; border: 1px solid var(--border);
+  border-radius: 12px; background: var(--surface); color: var(--text);
+  font-family: inherit; font-size: 13px; transition: border-color .15s, box-shadow .15s;
+}
+.user-forms-search input:focus {
+  outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(33, 104, 180, 0.16);
+}
+.user-forms-search-clear {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  border: none; background: transparent; color: var(--text-muted); font-size: 13px;
+  cursor: pointer; padding: 5px; display: flex; align-items: center; justify-content: center;
+}
+.user-forms-search-clear:hover { color: var(--text); }
+
+/* Forms Grid */
+.user-forms-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px;
+}
+.user-form-card {
+  position: relative; min-width: 0; min-height: 220px; padding: 20px;
+  border: 1px solid var(--border); border-radius: 16px; background: var(--surface);
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 3px 12px rgba(15, 30, 50, 0.03);
+  transition: transform .2s, box-shadow .2s, border-color .2s;
+}
+.user-form-card::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 4px; background: var(--primary); }
+.user-form-card.purple::before { background: #7c3aed; }
+.user-form-card.green::before { background: #10b981; }
+.user-form-card:hover { transform: translateY(-2px); border-color: var(--primary); box-shadow: 0 10px 24px rgba(15, 30, 50, 0.08); }
+
+.user-form-card-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.user-form-icon {
+  width: 40px; height: 40px; flex-shrink: 0; border-radius: 11px;
+  background: var(--hp-pri-lt, #eef5fd); color: var(--primary);
+  display: flex; align-items: center; justify-content: center; font-size: 17px;
+}
+.user-form-card.purple .user-form-icon { background: #f5f3ff; color: #7c3aed; }
+.user-form-card.green .user-form-icon { background: #ecfdf5; color: #10b981; }
+.user-form-card.submitted .user-form-icon { background: #ecfdf5; color: #059669; }
+
+.user-form-status { min-height: 25px; padding: 0 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; }
+.user-form-status.available { border: 1px solid #c7dcf1; background: var(--hp-pri-lt, #edf5fd); color: var(--primary); }
+.user-form-status.submitted { border: 1px solid #a7f3d0; background: #ecfdf5; color: #059669; }
+.user-form-status.not-open { border: 1px solid #fde68a; background: #fffbeb; color: #b45309; }
+.user-form-status.closed { border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c; }
+.user-form-status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+.user-form-card-content { min-width: 0; flex: 1; }
+.user-form-category { display: inline-flex; align-items: center; gap: 5px; color: var(--text-soft); font-size: 11px; font-weight: 600; }
+.user-form-card-content h3 { margin: 8px 0 6px; color: var(--text); font-size: 16px; line-height: 1.4; font-weight: 700; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.user-form-card-content p { margin: 0; color: var(--text-soft); font-size: 12px; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+.user-form-meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 16px; }
+.user-form-meta span {
+  min-height: 26px; padding: 0 9px; border-radius: 7px;
+  background: var(--meta-bg, #f1f5f9); color: var(--text-soft);
+  display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
+}
+
+.user-form-action {
+  width: 100%; height: 40px; flex-shrink: 0; padding: 0 14px;
+  border: none; border-radius: 10px; background: var(--primary);
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  gap: 7px; font-family: inherit; font-size: 12px; font-weight: 700;
+  cursor: pointer; box-shadow: 0 4px 12px rgba(15, 30, 50, 0.12);
+  transition: transform .15s, box-shadow .15s, filter .15s;
+}
+.user-form-action:hover { transform: translateY(-1px); filter: brightness(1.06); box-shadow: 0 6px 16px rgba(15, 30, 50, 0.18); }
+.user-form-action.submitted { background: #059669; }
+.user-form-action-arrow { margin-left: auto; }
+
+/* Empty State */
+.user-forms-empty {
+  grid-column: 1/-1; min-height: 240px; border: 1.5px dashed var(--border);
+  border-radius: 16px; background: var(--surface); display: flex;
+  align-items: center; justify-content: center; flex-direction: column; text-align: center; padding: 40px 20px;
+}
+.user-forms-empty-icon {
+  width: 54px; height: 54px; border-radius: 16px; background: var(--hp-pri-lt, #eef5fd);
+  color: var(--primary); display: flex; align-items: center; justify-content: center;
+  font-size: 24px; margin-bottom: 14px;
+}
+.user-forms-empty h3 { margin: 0; color: var(--text); font-size: 16px; font-weight: 700; }
+.user-forms-empty p { margin: 7px 0 18px; color: var(--text-soft); font-size: 13px; max-width: 440px; line-height: 1.5; }
+.user-forms-empty-btn {
+  padding: 8px 16px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface); color: var(--text); font-size: 12.5px; font-weight: 700; cursor: pointer;
+  transition: background .15s;
+}
+.user-forms-empty-btn:hover { background: var(--border); }
+
+/* QR Scanner Modal */
+.user-qr-overlay {
+  position: fixed; inset: 0; z-index: 200; padding: 20px;
+  background: rgba(5, 14, 26, 0.55); display: flex; align-items: center;
+  justify-content: center; backdrop-filter: blur(5px); animation: qrOverlayIn .18s ease;
+}
+.user-qr-modal {
+  width: 100%; max-width: 520px; max-height: calc(100vh - 40px); padding: 24px;
+  overflow: hidden; border: 1px solid var(--border); border-radius: 18px;
+  background: var(--surface); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+  animation: qrModalIn .2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.user-qr-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.user-qr-title { display: flex; align-items: center; gap: 11px; }
+.user-qr-title-icon {
+  width: 40px; height: 40px; flex-shrink: 0; border-radius: 11px;
+  background: var(--hp-pri-lt, #eef5fd); color: var(--primary);
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+}
+.user-qr-title h3 { margin: 0; color: var(--text); font-size: 17px; font-weight: 700; }
+.user-qr-close {
+  width: 32px; height: 32px; flex-shrink: 0; border: 1px solid var(--border);
+  border-radius: 9px; background: var(--surface); color: var(--text-soft);
+  display: flex; align-items: center; justify-content: center; cursor: pointer; transition: .15s;
+}
+.user-qr-close:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+.user-qr-description { margin: 0 0 16px; color: var(--text-soft); font-size: 12.5px; line-height: 1.6; }
+
+.user-qr-reader-wrapper {
+  position: relative; width: 100%; min-height: 280px; max-height: 340px;
+  overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: #0b1523;
+  display: flex; align-items: center; justify-content: center;
+}
+.user-qr-reader { width: 100%; height: 100%; }
+.user-qr-reader video { width: 100% !important; height: 100% !important; object-fit: cover; }
+.user-qr-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #8da4be;
+  font-size: 13px;
+  background: #0b1523;
+  z-index: 10;
+  pointer-events: none;
+}
+.user-qr-loading span {
+  text-align: center;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+.user-qr-loading-icon { width: 34px; height: 34px; border: 3px solid rgba(255,255,255,.2); border-top-color: var(--primary); border-radius: 50%; animation: qrSpin .8s linear infinite; }
+
+.user-qr-status { margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: #ecfdf5; color: #065f46; font-size: 12px; font-weight: 600; text-align: center; }
+.user-qr-error { margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: #fef2f2; color: #991b1b; font-size: 12px; font-weight: 600; text-align: center; }
+
+.user-qr-actions { display: flex; gap: 10px; margin-top: 20px; }
+.user-qr-cancel, .user-qr-retry {
+  flex: 1; height: 40px; border-radius: 10px; font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: .15s;
+}
+.user-qr-cancel { border: 1px solid var(--border); background: var(--surface); color: var(--text-soft); }
+.user-qr-cancel:hover { background: var(--border); }
+.user-qr-retry { border: none; background: var(--primary); color: #fff; box-shadow: 0 3px 10px rgba(15, 30, 50, 0.15); }
+.user-qr-retry:hover { filter: brightness(1.08); }
+
+@keyframes qrOverlayIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes qrModalIn { from { opacity: 0; transform: scale(.95) translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes qrSpin { to { transform: rotate(360deg); } }
+
+/* Dark Mode */
+.dark.user-forms-page {
+  --border: #1b2e40; --surface: #0f1c2b; --background: transparent;
+  --text: #dde9f6; --text-soft: #8da4be; --text-muted: #4b6277;
+  --meta-bg: #132235;
+}
+.dark .user-form-card { background: #0f1c2b; border-color: #1b2e40; }
+.dark .user-form-card:hover { border-color: var(--primary); }
+.dark .user-forms-search input { background: #0f1c2b; border-color: #1b2e40; color: #dde9f6; }
+.dark .user-forms-empty { background: #0f1c2b; border-color: #1b2e40; }
+.dark .user-forms-empty-btn { background: #132235; border-color: #1b2e40; color: #dde9f6; }
+.dark .user-qr-modal { background: #0f1c2b; border-color: #1b2e40; }
+.dark .user-qr-close { background: #132235; border-color: #1b2e40; color: #8da4be; }
+.dark .user-qr-cancel { background: #132235; border-color: #1b2e40; color: #8da4be; }
+
+@media (max-width: 768px) {
+  .user-forms-main-content { padding: 20px 16px 40px; }
+  .user-forms-header { flex-direction: column; align-items: flex-start; gap: 16px; padding: 22px 20px; }
+  .user-forms-toolbar { flex-direction: column; align-items: stretch; gap: 12px; }
+  .user-forms-search { max-width: 100%; }
+  .user-forms-grid { grid-template-columns: 1fr; }
+}
+`;
+
+const ACCENTS = ["blue", "purple", "green"];
+const DATE_OPTIONS = { day: "2-digit", month: "short", year: "numeric" };
+
+const formatDate = (value) => {
+  if (!value) return null;
+  const date = new Date(`${value}T00:00:00`);
+  const valid = Number.isNaN(date.getTime()) ? new Date(value) : date;
+  if (Number.isNaN(valid.getTime())) return String(value);
+  return new Intl.DateTimeFormat("en-GB", DATE_OPTIONS).format(valid);
 };
-// =========================================================
-// FORMAT DATE
-// =========================================================
-const formatDate = (
-  dateValue
-) => {
-  if (!dateValue) {
-    return "No deadline";
-  }
-  const date =
-    new Date(
-      dateValue
-    );
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
-    return String(
-      dateValue
-    );
-  }
-  return new Intl.DateTimeFormat(
-    "en-GB",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }
-  ).format(
-    date
-  );
+
+const formatScheduleDateTime = (dateValue, timeValue) => {
+  if (!dateValue) return "";
+  const fDate = formatDate(dateValue) || dateValue;
+  return timeValue ? `${fDate}, ${timeValue}` : fDate;
 };
-// =========================================================
-// CREATE DATE TIME
-// Digunakan untuk membaca jadwal Open dan Close.
-// =========================================================
-const createDateTime = (
-  dateValue,
-  timeValue,
-  fallbackTime
-) => {
-  if (!dateValue) {
-    return null;
-  }
-  const finalTime =
-    timeValue ||
-    fallbackTime;
-  const date =
-    new Date(
-      `${dateValue}T${finalTime}`
-    );
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
-    return null;
-  }
-  return date;
+
+const createScheduleDateTime = (dateValue, timeValue, endOfDay = false) => {
+  if (!dateValue) return null;
+  const time = timeValue
+    ? String(timeValue).length === 5 ? `${timeValue}:00` : String(timeValue)
+    : endOfDay ? "23:59:59" : "00:00:00";
+  const dt = new Date(`${dateValue}T${time}`);
+  return Number.isNaN(dt.getTime()) ? null : dt;
 };
-// =========================================================
-// GET SCHEDULE STATUS
-//
-// inactive  = dinonaktifkan admin.
-// not-open  = jadwal belum dimulai.
-// available = dapat dikerjakan.
-// closed    = jadwal sudah berakhir.
-// =========================================================
-const getScheduleStatus = (
-  form
-) => {
-  if (
-    form.active ===
-    false
-  ) {
-    return {
-      code: "inactive",
-      label: "Inactive",
-      canFill: false,
-    };
-  }
-  const currentTime =
-    new Date();
-  const openDateTime =
-    createDateTime(
-      form.openDate,
-      form.openTime,
-      "00:00"
-    );
-  const closeDateTime =
-    createDateTime(
-      form.closeDate,
-      form.closeTime,
-      "23:59"
-    );
-  if (
-    openDateTime &&
-    currentTime <
-      openDateTime
-  ) {
-    return {
-      code: "not-open",
-      label: "Not Open Yet",
-      canFill: false,
-    };
-  }
-  if (
-    closeDateTime &&
-    currentTime >
-      closeDateTime
-  ) {
-    return {
-      code: "closed",
-      label: "Closed",
-      canFill: false,
-    };
-  }
-  return {
-    code: "available",
-    label: "Available",
-    canFill: true,
-  };
+
+const getFormScheduleStatus = (form, now = new Date()) => {
+  const openAt = createScheduleDateTime(form.openDate, form.openTime);
+  const closeAt = createScheduleDateTime(form.closeDate, form.closeTime, true);
+  if (!openAt && !closeAt) return { status: "unscheduled", isOpen: true };
+  const t = now.getTime();
+  if (openAt && t < openAt.getTime()) return { status: "not-open", isOpen: false };
+  if (closeAt && t > closeAt.getTime()) return { status: "closed", isOpen: false };
+  return { status: "open", isOpen: true };
 };
-// =========================================================
-// NORMALIZE CUSTOM LINK
-// =========================================================
-const normalizeCustomLink = (
-  form
-) => {
-  const rawValue =
-    String(
-      form.customLink ||
-      form.link ||
-      ""
-    )
-      .trim()
-      .replace(
-        /^https?:\/\//i,
-        ""
-      )
-      .replace(
-        /^hidocs\.app\/r\//i,
-        ""
-      )
-      .replace(
-        /^localhost:\d+\/r\//i,
-        ""
-      )
-      .replace(
-        /^localhost:\d+\/form-details\//i,
-        ""
-      )
-      .replace(
-        /^\/form-details\//i,
-        ""
-      )
-      .replace(
-        /^\/r\//i,
-        ""
-      )
-      .replace(
-        /^\/+/,
-        ""
-      )
-      .split("?")[0]
-      .split("#")[0];
-  return (
-    rawValue ||
-    String(
-      form.id ||
-      ""
-    )
-  );
+
+const getAccessSettings = (form) => {
+  const accessMode = form.accessMode ?? form.settings?.accessMode ?? "public";
+  const qrOnly = form.qrOnly ?? form.settings?.qrOnly ?? accessMode === "qr-only";
+  const showInUserList = form.showInUserList ?? form.settings?.showInUserList ?? !qrOnly;
+  return { accessMode, qrOnly, showInUserList };
 };
-// =========================================================
-// CHECK ACTIVE FORM
-// =========================================================
-const isFormActive = (
-  form
-) => {
-  return (
-    form.active !==
-    false
-  );
+
+const isFormActive = (form) => form.active !== false;
+
+const isPublicUserForm = (form) => {
+  const { qrOnly, showInUserList } = getAccessSettings(form);
+  return !qrOnly && showInUserList;
 };
-// =========================================================
-// CHECK PUBLIC FORM
-// =========================================================
-const isPublicForm = (
-  form
-) => {
-  const accessMode =
-    form.accessMode ??
-    form.settings?.accessMode ??
-    "public";
-  const qrOnly =
-    form.qrOnly ??
-    form.settings?.qrOnly ??
-    accessMode ===
-      "qr-only";
-  const showInUserList =
-    form.showInUserList ??
-    form.settings?.showInUserList ??
-    !qrOnly;
-  return (
-    accessMode !==
-      "qr-only" &&
-    qrOnly !==
-      true &&
-    showInUserList !==
-      false
-  );
+
+const getFormDuration = (form) => {
+  const timer = form.settings?.timer && typeof form.settings.timer === "object" ? form.settings.timer : null;
+  const enabled = form.timerEnabled ?? form.settings?.timerEnabled ?? timer?.enabled;
+  if (enabled === false) return null;
+  const raw = form.timerDuration ?? form.settings?.timerDuration ?? timer?.duration ?? form.duration ?? form.settings?.duration;
+  if (raw == null || raw === "") return null;
+  const num = Number(raw);
+  return Number.isFinite(num) && num > 0 ? `${num} min` : String(raw).trim() || null;
 };
-// =========================================================
-// GET FORM DURATION
-// =========================================================
-const getFormDuration = (
-  form
-) => {
-  const timerObject =
-    form.settings?.timer &&
-    typeof form.settings.timer ===
-      "object"
-      ? form.settings.timer
-      : null;
-  const timerEnabled =
-    form.timerEnabled ??
-    form.settings?.timerEnabled ??
-    timerObject?.enabled;
-  if (
-    timerEnabled ===
-    false
-  ) {
-    return "No timer";
-  }
-  const durationValue =
-    form.timerDuration ??
-    form.settings?.timerDuration ??
-    timerObject?.duration ??
-    form.duration ??
-    form.settings?.duration;
-  if (
-    durationValue ===
-      undefined ||
-    durationValue ===
-      null ||
-    durationValue ===
-      ""
-  ) {
-    return "No timer";
-  }
-  if (
-    typeof durationValue ===
-    "string"
-  ) {
-    const durationText =
-      durationValue.trim();
-    if (!durationText) {
-      return "No timer";
-    }
-    if (
-      durationText
-        .toLowerCase()
-        .includes(
-          "min"
-        )
-    ) {
-      return durationText;
-    }
-    const durationNumber =
-      Number(
-        durationText
-      );
-    if (
-      Number.isFinite(
-        durationNumber
-      ) &&
-      durationNumber >
-        0
-    ) {
-      return `${durationNumber} min`;
-    }
-    return durationText;
-  }
-  const durationNumber =
-    Number(
-      durationValue
-    );
-  if (
-    Number.isFinite(
-      durationNumber
-    ) &&
-    durationNumber >
-      0
-  ) {
-    return `${durationNumber} min`;
-  }
-  return "No timer";
-};
-// =========================================================
-// NORMALIZE FORM
-// =========================================================
-const normalizeForm = (
-  form,
-  index
-) => {
-  const customLink =
-    normalizeCustomLink(
-      form
-    );
-  const questionCount =
-    Array.isArray(
-      form.questions
-    )
-      ? form.questions.length
-      : Number(
-          form.questions
-        ) || 0;
-  const accessMode =
-    form.accessMode ??
-    form.settings?.accessMode ??
-    "public";
-  const qrOnly =
-    form.qrOnly ??
-    form.settings?.qrOnly ??
-    accessMode ===
-      "qr-only";
-  const showInUserList =
-    form.showInUserList ??
-    form.settings?.showInUserList ??
-    !qrOnly;
-  const scheduleStatus =
-    getScheduleStatus(
-      form
-    );
+
+const normalizeAdminForm = (form, index) => {
+  const { accessMode, qrOnly, showInUserList } = getAccessSettings(form);
   return {
     ...form,
-    id:
-      form.id ??
-      Date.now() +
-      index,
-    title:
-      String(
-        form.title ||
-        ""
-      ).trim() ||
-      "Untitled Form",
-    description:
-      String(
-        form.description ||
-        ""
-      ).trim() ||
-      "Complete this form and submit your response.",
-    category:
-      form.category ||
-      form.type ||
-      "Form",
-    questions:
-      questionCount,
-    duration:
-      getFormDuration(
-        form
-      ),
-    deadline:
-      form.closeDate
-        ? formatDate(
-            form.closeDate
-          )
-        : form.deadline
-        ? formatDate(
-            form.deadline
-          )
-        : "No deadline",
-    active:
-      isFormActive(
-        form
-      ),
-    scheduleStatus:
-      scheduleStatus.code,
-    scheduleLabel:
-      scheduleStatus.label,
-    canFill:
-      scheduleStatus.canFill,
-    openDate:
-      form.openDate ||
-      "",
-    openTime:
-      form.openTime ||
-      "",
-    closeDate:
-      form.closeDate ||
-      "",
-    closeTime:
-      form.closeTime ||
-      "",
-    accent:
-      form.accent ||
-      accentOptions[
-        index %
-        accentOptions.length
-      ],
-    customLink,
-    link:
-      form.link
-        ? String(
-            form.link
-          ).replace(
-            /^https?:\/\//i,
-            ""
-          )
-        : `hidocs.app/r/${customLink}`,
-    createdAt:
-      form.createdAt ||
-      new Date(
-        Date.now() +
-        index
-      ).toISOString(),
-    accessMode,
-    qrOnly,
-    showInUserList,
+    id: form.id ?? Date.now() + index,
+    title: String(form.title || "").trim() || "Untitled Form",
+    description: String(form.description || "").trim() || "Complete this form and submit your response.",
+    category: form.category || form.type || "Form",
+    questions: Array.isArray(form.questions) ? form.questions.length : Number(form.questions) || 0,
+    duration: getFormDuration(form),
+    deadline: form.closeDate ? formatDate(form.closeDate) : form.deadline ? formatDate(form.deadline) : null,
+    createdAt: form.createdAt || new Date(Date.now() + index).toISOString(),
+    active: isFormActive(form),
+    accent: form.accent || ACCENTS[index % ACCENTS.length],
+    customLink: String(form.custom_url || form.customLink || "").trim(),
+    custom_url: form.custom_url || "",
+    accessMode, qrOnly, showInUserList,
+    openDate: form.openDate || "",
+    closeDate: form.closeDate || "",
+    openTime: form.openTime || "",
+    closeTime: form.closeTime || "",
   };
 };
-// =========================================================
-// MERGE FORMS
-//
-// Default dimasukkan dulu.
-// localStorage dimasukkan setelahnya.
-// Jadi data hasil perubahan admin memiliki prioritas.
-// =========================================================
-const mergeForms = (
-  baseForms,
-  storedForms
-) => {
-  const result =
-    [];
-  const combinedSource = [
-    ...baseForms,
-    ...storedForms,
-  ];
-  combinedSource.forEach(
-    (
-      form,
-      index
-    ) => {
-      const normalizedForm =
-        normalizeForm(
-          form,
-          index
-        );
-      const existingIndex =
-        result.findIndex(
-          (
-            item
-          ) => {
-            const sameId =
-              String(
-                item.id
-              ) ===
-              String(
-                normalizedForm.id
-              );
-            const sameLink =
-              Boolean(
-                item.customLink
-              ) &&
-              Boolean(
-                normalizedForm.customLink
-              ) &&
-              String(
-                item.customLink
-              )
-                .trim()
-                .toLowerCase() ===
-              String(
-                normalizedForm.customLink
-              )
-                .trim()
-                .toLowerCase();
-            return (
-              sameId ||
-              sameLink
-            );
-          }
-        );
-      if (
-        existingIndex !==
-        -1
-      ) {
-        result[
-          existingIndex
-        ] =
-          normalizedForm;
-      } else {
-        result.push(
-          normalizedForm
-        );
-      }
-    }
-  );
-  return result;
-};
-// =========================================================
-// USER FORMS
-// =========================================================
-function UserForms() {
-  const navigate =
-    useNavigate();
-  const {
-    darkMode,
-  } = useContext(
-    ThemeContext
-  );
-  const {
-    submittedForms = [],
-  } = useContext(
-    FormContext
-  );
-  // =========================================================
-  // FORM STATE
-  //
-  // allForms:
-  // Form aktif untuk scanner QR.
-  //
-  // forms:
-  // Form public yang tampil di daftar user.
-  // =========================================================
-  const [
-    allForms,
-    setAllForms,
-  ] = useState([]);
-  const [
-    forms,
-    setForms,
-  ] = useState([]);
-  const [
-    search,
-    setSearch,
-  ] = useState("");
-  const [
-    showScanner,
-    setShowScanner,
-  ] = useState(false);
-  const [
-    scannerStatus,
-    setScannerStatus,
-  ] = useState("");
-  const [
-    scannerError,
-    setScannerError,
-  ] = useState("");
-  const [
-    savedFormIds,
-    setSavedFormIds,
-  ] = useState([]);
-  const [
-    scannerRunning,
-    setScannerRunning,
-  ] = useState(false);
-  const scannerRef =
-    useRef(null);
-  const scanHandledRef =
-    useRef(false);
-  // =========================================================
-  // LOAD FORMS
-  // =========================================================
-  const loadForms =
-    useCallback(
-      async () => {
-        try {
-          let apiForms = [];
-          try {
-            const res = await getForms();
-            const fetched = res?.data?.data || res?.data || [];
-            if (Array.isArray(fetched)) {
-              apiForms = fetched.map((form) => ({
-                id: form.id,
-                title: form.title,
-                description: form.description,
-                category: form.type || "Form",
-                type: form.type || "Form",
-                questions: form.questions?.length || form.response_count || 0,
-                duration: form.form_settings?.duration_minutes ? `${form.form_settings.duration_minutes} min` : "20 min",
-                active: form.status === "ACTIVE",
-                customLink: form.custom_url,
-                link: form.custom_url ? `hidocs.app/r/${form.custom_url}` : "",
-                createdAt: form.created_at,
-                accessMode: "public",
-                showInUserList: true,
-                qrOnly: false,
-              }));
-            }
-          } catch (apiErr) {
-            console.warn("Backend API getForms in UserForms fallback to local:", apiErr);
-          }
 
-          const storedForms =
-            getStoredArray(
-              FORMS_STORAGE_KEY
-            );
-          const deletedFormIds =
-            getStoredArray(
-              DELETED_FORMS_STORAGE_KEY
-            ).map(
-              (
-                deletedId
-              ) =>
-                String(
-                  deletedId
-                )
-            );
-          const currentSavedIds =
-            getStoredArray(
-              SAVED_FORMS_STORAGE_KEY
-            ).map(
-              (
-                formId
-              ) =>
-                String(
-                  formId
-                )
-            );
-          // ===================================================
-          // MERGE DEFAULT + DATA ADMIN + BACKEND API
-          // ===================================================
-          const combinedForms =
-            mergeForms(
-              defaultForms,
-              [...storedForms, ...apiForms]
-            );
-          // ===================================================
-          // REMOVE DELETED
-          // ===================================================
-          const nonDeletedForms =
-            combinedForms.filter(
-              (
-                form
-              ) => {
-                return (
-                  !deletedFormIds.includes(
-                    String(
-                      form.id
-                    )
-                  )
-                );
-              }
-            );
-          // ===================================================
-          // ACTIVE FORMS
-          //
-          // Digunakan scanner.
-          //
-          // Form yang Closed / Not Open masih termasuk,
-          // selama tidak dinonaktifkan admin.
-          // ===================================================
-          const activeForms =
-            nonDeletedForms.filter(
-              (
-                form
-              ) =>
-                form.active !==
-                false
-            );
-          // ===================================================
-          // VISIBLE PUBLIC FORMS
-          //
-          // Public form tetap ditampilkan meskipun:
-          // - belum dibuka
-          // - sudah ditutup
-          //
-          // Supaya user bisa melihat status jadwalnya.
-          // ===================================================
-          const visibleForms =
-            activeForms.filter(
-              (
-                form
-              ) =>
-                isPublicForm(
-                  form
-                )
-            );
-          // ===================================================
-          // SORT NEWEST FIRST
-          // ===================================================
-          const sortedForms =
-            [...visibleForms].sort(
-              (
-                first,
-                second
-              ) => {
-                const firstTime =
-                  new Date(
-                    first.createdAt ||
-                    0
-                  ).getTime();
-                const secondTime =
-                  new Date(
-                    second.createdAt ||
-                    0
-                  ).getTime();
-                const safeFirstTime =
-                  Number.isNaN(
-                    firstTime
-                  )
-                    ? 0
-                    : firstTime;
-                const safeSecondTime =
-                  Number.isNaN(
-                    secondTime
-                  )
-                    ? 0
-                    : secondTime;
-                return (
-                  safeSecondTime -
-                  safeFirstTime
-                );
-              }
-            );
-          setAllForms(
-            activeForms
-          );
-          setForms(
-            sortedForms
-          );
-          setSavedFormIds(
-            currentSavedIds
-          );
-        } catch (error) {
-          console.error(
-            "Gagal memuat form user:",
-            error
-          );
-          setAllForms([]);
-          setForms([]);
-          setSavedFormIds([]);
-        }
-      },
-      []
+const getSubmittedFormId = (item) => item?.formId ?? item?.form_id ?? item?.form?.id ?? item?.id;
+
+const extractQrIdentifier = (scannedValue) => {
+  const clean = String(scannedValue || "").trim();
+  if (!clean) return "";
+  try {
+    const parsed = new URL(/^https?:\/\//i.test(clean) ? clean : `https://${clean}`);
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    const detailIdx = parts.findIndex((p) => p.toLowerCase() === "form-details");
+    if (detailIdx !== -1 && parts[detailIdx + 1]) return decodeURIComponent(parts[detailIdx + 1]);
+    const rIdx = parts.findIndex((p) => p.toLowerCase() === "r");
+    if (rIdx !== -1 && parts[rIdx + 1]) return decodeURIComponent(parts[rIdx + 1]);
+    return decodeURIComponent(parts[parts.length - 1] || clean);
+  } catch {
+    return decodeURIComponent(
+      clean.replace(/^https?:\/\//i, "").replace(/^.*\/form-details\//i, "").replace(/^.*\/r\//i, "").replace(/^\/+/, "").split("?")[0].split("#")[0]
     );
-  // =========================================================
-  // LOAD PAGE
-  // =========================================================
-  useEffect(
-    () => {
-      loadForms();
-    },
-    [
-      loadForms,
-    ]
-  );
-  // =========================================================
-  // AUTO REFRESH SCHEDULE
-  //
-  // Status berubah otomatis:
-  // Not Open Yet -> Available -> Closed
-  // =========================================================
-  useEffect(
-    () => {
-      const interval =
-        window.setInterval(
-          () => {
-            loadForms();
-          },
-          30000
-        );
-      return () => {
-        window.clearInterval(
-          interval
-        );
+  }
+};
+
+function UserFormCard({ form, t }) {
+  const navigate = useNavigate();
+
+  const getStatusInfo = () => {
+    if (form.submitted) {
+      return {
+        label: t?.forms?.submittedBadge || "Submitted",
+        className: "submitted",
+        icon: <FaCheckCircle />,
+        description: t?.dashboard?.alreadySubmittedDesc || "You have already submitted this form.",
+        buttonText: t?.forms?.viewSubmitted || "View Submitted Form",
       };
-    },
-    [
-      loadForms,
-    ]
-  );
-  // =========================================================
-  // STORAGE CHANGE
-  // =========================================================
-  useEffect(
-    () => {
-      const handleStorageChange =
-        (
-          event
-        ) => {
-          if (
-            event.key ===
-              FORMS_STORAGE_KEY ||
-            event.key ===
-              DELETED_FORMS_STORAGE_KEY ||
-            event.key ===
-              SAVED_FORMS_STORAGE_KEY
-          ) {
-            loadForms();
-          }
-        };
-      window.addEventListener(
-        "storage",
-        handleStorageChange
-      );
-      return () => {
-        window.removeEventListener(
-          "storage",
-          handleStorageChange
-        );
-      };
-    },
-    [
-      loadForms,
-    ]
-  );
-  // =========================================================
-  // WINDOW FOCUS
-  // =========================================================
-  useEffect(
-    () => {
-      const handleFocus =
-        () => {
-          loadForms();
-        };
-      window.addEventListener(
-        "focus",
-        handleFocus
-      );
-      return () => {
-        window.removeEventListener(
-          "focus",
-          handleFocus
-        );
-      };
-    },
-    [
-      loadForms,
-    ]
-  );
-  // =========================================================
-  // PAGE VISIBILITY
-  // =========================================================
-  useEffect(
-    () => {
-      const handleVisibilityChange =
-        () => {
-          if (
-            document.visibilityState ===
-            "visible"
-          ) {
-            loadForms();
-          }
-        };
-      document.addEventListener(
-        "visibilitychange",
-        handleVisibilityChange
-      );
-      return () => {
-        document.removeEventListener(
-          "visibilitychange",
-          handleVisibilityChange
-        );
-      };
-    },
-    [
-      loadForms,
-    ]
-  );
-  // =========================================================
-  // PAGE SHOW
-  // =========================================================
-  useEffect(
-    () => {
-      const handlePageShow =
-        () => {
-          loadForms();
-        };
-      window.addEventListener(
-        "pageshow",
-        handlePageShow
-      );
-      return () => {
-        window.removeEventListener(
-          "pageshow",
-          handlePageShow
-        );
-      };
-    },
-    [
-      loadForms,
-    ]
-  );
-  // =========================================================
-  // CUSTOM UPDATE EVENT
-  //
-  // AdminFormDetails menggunakan event ini setelah:
-  // - active / inactive
-  // - perubahan jadwal
-  // =========================================================
-  useEffect(
-    () => {
-      const handleFormsUpdated =
-        () => {
-          loadForms();
-        };
-      window.addEventListener(
-        "hidocs-forms-updated",
-        handleFormsUpdated
-      );
-      return () => {
-        window.removeEventListener(
-          "hidocs-forms-updated",
-          handleFormsUpdated
-        );
-      };
-    },
-    [
-      loadForms,
-    ]
-  );
-  // =========================================================
-  // CHECK SUBMITTED
-  // =========================================================
-  const isSubmitted = (
-    formId
-  ) => {
-    return submittedForms.some(
-      (
-        submission
-      ) => {
-        const submissionFormId =
-          submission.formId ??
-          submission.id;
-        return (
-          String(
-            submissionFormId
-          ) ===
-          String(
-            formId
-          )
-        );
-      }
-    );
-  };
-  // =========================================================
-  // FILTERED FORMS
-  // =========================================================
-  const filteredForms =
-    useMemo(
-      () => {
-        const keyword =
-          search
-            .trim()
-            .toLowerCase();
-        if (!keyword) {
-          return forms;
-        }
-        return forms.filter(
-          (
-            form
-          ) => {
-            const searchableValue = [
-              form.title,
-              form.description,
-              form.category,
-              form.customLink,
-              form.link,
-              form.scheduleLabel,
-            ]
-              .map(
-                (
-                  value
-                ) =>
-                  String(
-                    value ||
-                    ""
-                  ).toLowerCase()
-              )
-              .join(
-                " "
-              );
-            return searchableValue.includes(
-              keyword
-            );
-          }
-        );
-      },
-      [
-        forms,
-        search,
-      ]
-    );
-  // =========================================================
-  // SAVE FORM TO USER
-  //
-  // Disimpan untuk mengetahui QR-only yang pernah dibuka.
-  // QR-only tetap tidak ditampilkan di daftar public.
-  // =========================================================
-  const saveFormToUser =
-    useCallback(
-      (
-        formId
-      ) => {
-        const currentSavedIds =
-          getStoredArray(
-            SAVED_FORMS_STORAGE_KEY
-          ).map(
-            (
-              savedId
-            ) =>
-              String(
-                savedId
-              )
-          );
-        const normalizedId =
-          String(
-            formId
-          );
-        if (
-          currentSavedIds.includes(
-            normalizedId
-          )
-        ) {
-          return currentSavedIds;
-        }
-        const updatedIds = [
-          ...currentSavedIds,
-          normalizedId,
-        ];
-        localStorage.setItem(
-          SAVED_FORMS_STORAGE_KEY,
-          JSON.stringify(
-            updatedIds
-          )
-        );
-        setSavedFormIds(
-          updatedIds
-        );
-        return updatedIds;
-      },
-      []
-    );
-  // =========================================================
-  // OPEN PUBLIC FORM DETAILS
-  // =========================================================
-  const openFormDetails = (
-    form
-  ) => {
-    navigate(
-      `/form-details/${form.id}`
-    );
-  };
-  // =========================================================
-  // NORMALIZE QR TOKEN
-  // =========================================================
-  const normalizeQrToken = (
-    value
-  ) => {
-    return String(
-      value ??
-      ""
-    )
-      .trim()
-      .replace(
-        /^https?:\/\//i,
-        ""
-      )
-      .replace(
-        /^hidocs\.app\/r\//i,
-        ""
-      )
-      .replace(
-        /^form-details\//i,
-        ""
-      )
-      .replace(
-        /^r\//i,
-        ""
-      )
-      .replace(
-        /^\/+/, ""
-      )
-      .replace(
-        /\/+$/,
-        ""
-      )
-      .split("?")[0]
-      .split("#")[0]
-      .toLowerCase();
-  };
-  // =========================================================
-  // EXTRACT VALUE FROM QR
-  // =========================================================
-  const extractQrIdentifier = (
-    scannedValue
-  ) => {
-    const cleanValue =
-      String(
-        scannedValue ||
-        ""
-      ).trim();
-    if (!cleanValue) {
-      return "";
     }
+    if (form.scheduleStatus === "not-open") {
+      const openText = formatScheduleDateTime(form.openDate, form.openTime);
+      return {
+        label: t?.forms?.notOpenBadge || "Not Open Yet",
+        className: "not-open",
+        icon: <FaHourglassHalf />,
+        description: openText ? `${t?.dashboard?.opensOn || "Opens on"} ${openText}.` : (t?.forms?.notOpenBadge || "Not open yet."),
+        buttonText: t?.forms?.viewSchedule || "View Schedule",
+      };
+    }
+    if (form.scheduleStatus === "closed") {
+      const closeText = formatScheduleDateTime(form.closeDate, form.closeTime);
+      return {
+        label: t?.forms?.closedBadge || "Closed",
+        className: "closed",
+        icon: <FaLock />,
+        description: closeText ? `${t?.dashboard?.closedOn || "Closed on"} ${closeText}.` : (t?.forms?.closedBadge || "Already closed."),
+        buttonText: t?.forms?.viewClosed || "View Closed Form",
+      };
+    }
+    return {
+      label: t?.forms?.availableBadge || "Available",
+      className: "available",
+      icon: null,
+      description: form.description,
+      buttonText: t?.forms?.viewDetails || "View Form Details",
+    };
+  };
+
+  const status = getStatusInfo();
+  const cardClass = [
+    "user-form-card",
+    form.accent !== "blue" ? form.accent : "",
+    form.submitted ? "submitted" : "",
+  ].filter(Boolean).join(" ");
+
+  return (
+    <article className={cardClass}>
+      <div className="user-form-card-header">
+        <div className="user-form-icon"><FaFileAlt /></div>
+        <span className={`user-form-status ${status.className}`}>
+          {status.icon || <span className="user-form-status-dot" />}
+          {status.label}
+        </span>
+      </div>
+      <div className="user-form-card-content">
+        <span className="user-form-category"><FaLayerGroup />{form.category}</span>
+        <h3>{form.title}</h3>
+        <p>{status.description}</p>
+        <div className="user-form-meta">
+          <span><FaRegCalendarAlt />{form.deadline || t?.dashboard?.noDeadline || "No deadline"}</span>
+          <span><FaClock />{form.duration || t?.dashboard?.noTimer || "No timer"}</span>
+          <span><FaFileAlt />{form.questions} {t?.dashboard?.questions || "Questions"}</span>
+        </div>
+      </div>
+      <button
+        type="button"
+        className={`user-form-action${form.submitted ? " submitted" : ""}`}
+        onClick={() => navigate(`/form-details/${form.id}`)}
+      >
+        <FaEye />
+        {status.buttonText}
+        <FaArrowRight className="user-form-action-arrow" />
+      </button>
+    </article>
+  );
+}
+
+export default function UserForms() {
+  const navigate = useNavigate();
+  const { submittedForms = [] } = useContext(FormContext) || {};
+  const { darkMode, t } = useTheme();
+
+  const [forms, setForms] = useState([]);
+  const [search, setSearch] = useState("");
+  const [currentDate] = useState(new Date());
+
+  const [showScanner, setShowScanner] = useState(false);
+  const [scannerRunning, setScannerRunning] = useState(false);
+  const [scannerStatus, setScannerStatus] = useState("");
+  const [scannerError, setScannerError] = useState("");
+
+  const scannerRef = useRef(null);
+  const scanHandledRef = useRef(false);
+
+  const loadForms = useCallback(async () => {
     try {
-      const parsedUrl =
-        new URL(
-          cleanValue
-        );
-      const pathParts =
-        parsedUrl.pathname
-          .split("/")
-          .filter(
-            Boolean
-          );
-      const formDetailsIndex =
-        pathParts.findIndex(
-          (
-            part
-          ) =>
-            part ===
-            "form-details"
-        );
-      if (
-        formDetailsIndex !==
-          -1 &&
-        pathParts[
-          formDetailsIndex +
-          1
-        ]
-      ) {
-        return decodeURIComponent(
-          pathParts[
-            formDetailsIndex +
-            1
-          ]
-        );
-      }
-      const publicLinkIndex =
-        pathParts.findIndex(
-          (
-            part
-          ) =>
-            part ===
-            "r"
-        );
-      if (
-        publicLinkIndex !==
-          -1 &&
-        pathParts[
-          publicLinkIndex +
-          1
-        ]
-      ) {
-        return decodeURIComponent(
-          pathParts[
-            publicLinkIndex +
-            1
-          ]
-        );
-      }
-      return decodeURIComponent(
-        pathParts[
-          pathParts.length -
-          1
-        ] ||
-        cleanValue
+      const res = await getForms();
+      const raw = Array.isArray(res?.data?.data) ? res.data.data : Array.isArray(res?.data) ? res.data : [];
+      setForms(
+        raw.map((f, i) => normalizeAdminForm(f, i))
+          .filter((f) => isFormActive(f) && isPublicUserForm(f))
+          .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
       );
     } catch {
-      return decodeURIComponent(
-        cleanValue
-          .replace(
-            /^https?:\/\//i,
-            ""
-          )
-          .replace(
-            /^hidocs\.app\/r\//i,
-            ""
-          )
-          .replace(
-            /^.*\/form-details\//i,
-            ""
-          )
-          .replace(
-            /^.*\/r\//i,
-            ""
-          )
-          .replace(
-            /^\/+/,
-            ""
-          )
-          .split("?")[0]
-          .split("#")[0]
-      );
+      setForms([]);
     }
-  };
-  // =========================================================
-  // FETCH REMOTE FORM FROM QR
-  // =========================================================
-  const fetchRemoteFormFromQr =
-    useCallback(
-      async (
-        identifier
-      ) => {
-        if (!identifier) {
-          return null;
-        }
+  }, []);
 
-        const candidateRequests = [];
-        if (/^\d+$/.test(identifier)) {
-          candidateRequests.push(async () => {
-            const response = await getFormById(identifier);
-            return response?.data?.data ?? response?.data ?? response;
-          });
-        }
+  useEffect(() => {
+    loadForms();
+  }, [loadForms]);
 
-        candidateRequests.push(async () => {
-          const response = await getPublicForm(identifier);
-          return response?.data?.data ?? response?.data ?? response;
-        });
+  const stopScanner = useCallback(async () => {
+    const s = scannerRef.current;
+    if (!s) { setScannerRunning(false); return; }
+    try { if (s.isScanning) await s.stop(); } catch { }
+    try { await s.clear(); } catch { }
+    scannerRef.current = null;
+    setScannerRunning(false);
+  }, []);
 
-        for (const request of candidateRequests) {
-          try {
-            const payload = await request();
-            if (!payload) {
-              continue;
-            }
+  const closeScanner = useCallback(async () => {
+    await stopScanner();
+    setShowScanner(false);
+    setScannerStatus("");
+    setScannerError("");
+    scanHandledRef.current = false;
+  }, [stopScanner]);
 
-            const remoteForm = {
-              id:
-                payload.id ??
-                payload.form_id ??
-                payload.formId ??
-                identifier,
-              title:
-                payload.title ||
-                "Form",
-              description:
-                payload.description ||
-                "",
-              category:
-                payload.category ||
-                payload.type ||
-                "General",
-              active:
-                payload.active !==
-                false &&
-                payload.status !==
-                "INACTIVE",
-              customLink:
-                payload.custom_url ||
-                payload.customUrl ||
-                payload.short_code ||
-                payload.shortCode ||
-                identifier,
-              link:
-                payload.link ||
-                payload.url ||
-                payload.public_link ||
-                payload.publicLink ||
-                (payload.custom_url
-                  ? `hidocs.app/r/${payload.custom_url}`
-                  : ""),
-              createdAt:
-                payload.created_at ||
-                payload.createdAt ||
-                new Date().toISOString(),
-              accessMode:
-                payload.access_mode ||
-                payload.accessMode ||
-                "public",
-              showInUserList:
-                payload.show_in_user_list ??
-                payload.showInUserList ??
-                true,
-              qrOnly:
-                payload.qr_only ??
-                payload.qrOnly ??
-                false,
-              isRemote: true,
-            };
+  const findFormFromQr = useCallback((scannedValue) => {
+    const id = extractQrIdentifier(scannedValue).toLowerCase();
+    if (!id) return null;
+    return forms.find((f) => {
+      const fid = String(f.id || "").toLowerCase();
+      const cl = String(f.customLink || f.custom_url || "").toLowerCase();
+      return fid === id || cl === id;
+    }) || null;
+  }, [forms]);
 
-            return remoteForm;
-          } catch (error) {
-            console.warn(
-              "QR fetch fallback gagal:",
-              identifier,
-              error
-            );
-          }
-        }
+  const handleScanSuccess = useCallback(async (decoded) => {
+    if (scanHandledRef.current) return;
+    scanHandledRef.current = true;
+    const matched = findFormFromQr(decoded);
+    if (!matched) {
+      setScannerError(t?.dashboard?.errNotFound || "Formulir tidak ditemukan.");
+      scanHandledRef.current = false;
+      return;
+    }
+    setScannerStatus(matched.title);
+    await stopScanner();
+    setTimeout(() => {
+      closeScanner();
+      navigate(`/form-details/${matched.id}`);
+    }, 600);
+  }, [findFormFromQr, stopScanner, closeScanner, navigate, t]);
 
-        return null;
-      },
-      []
-    );
-
-  // =========================================================
-  // FIND FORM FROM QR
-  // =========================================================
-  const findFormFromQr =
-    useCallback(
-      async (
-        scannedValue
-      ) => {
-        const identifier =
-          normalizeQrToken(
-            extractQrIdentifier(
-              scannedValue
-            )
-          );
-        if (!identifier) {
-          return null;
-        }
-
-        const normalizedScannedLink =
-          normalizeQrToken(
-            scannedValue
-          );
-
-        const localMatch =
-          allForms.find(
-            (
-              form
-            ) => {
-              const formId =
-                normalizeQrToken(
-                  form.id
-                );
-              const formCustomLink =
-                normalizeQrToken(
-                  form.customLink
-                );
-              const formLink =
-                normalizeQrToken(
-                  form.link
-                );
-              const formPublicLink =
-                normalizeQrToken(
-                  form.publicLink
-                );
-              const formUrl =
-                normalizeQrToken(
-                  form.url
-                );
-
-              return (
-                formId ===
-                  identifier ||
-                formCustomLink ===
-                  identifier ||
-                formLink ===
-                  identifier ||
-                formPublicLink ===
-                  identifier ||
-                formUrl ===
-                  identifier ||
-                formLink ===
-                  normalizedScannedLink ||
-                formPublicLink ===
-                  normalizedScannedLink ||
-                formUrl ===
-                  normalizedScannedLink ||
-                formCustomLink ===
-                  normalizedScannedLink
-              );
-            }
-          );
-
-        if (localMatch) {
-          return localMatch;
-        }
-
-        return fetchRemoteFormFromQr(
-          identifier
-        );
-      },
-      [
-        allForms,
-        fetchRemoteFormFromQr,
-        normalizeQrToken,
-      ]
-    );
-  // =========================================================
-  // STOP QR SCANNER
-  // =========================================================
-  const stopScanner =
-    useCallback(
-      async () => {
-        const scanner =
-          scannerRef.current;
-        if (!scanner) {
-          setScannerRunning(
-            false
-          );
-          return;
-        }
-        try {
-          if (
-            scanner.isScanning
-          ) {
-            await scanner.stop();
-          }
-        } catch (error) {
-          console.error(
-            "Gagal menghentikan scanner:",
-            error
-          );
-        }
-        try {
-          await scanner.clear();
-        } catch (error) {
-          console.error(
-            "Gagal membersihkan scanner:",
-            error
-          );
-        } finally {
-          scannerRef.current =
-            null;
-          setScannerRunning(
-            false
-          );
-        }
-      },
-      []
-    );
-  // =========================================================
-  // CLOSE SCANNER
-  // =========================================================
-  const closeScanner =
-    useCallback(
-      async () => {
-        await stopScanner();
-        setShowScanner(
-          false
-        );
-        setScannerStatus(
-          ""
-        );
-        setScannerError(
-          ""
-        );
-        scanHandledRef.current =
-          false;
-      },
-      [
-        stopScanner,
-      ]
-    );
-  // =========================================================
-  // RESOLVE DIRECT QR ROUTE
-  // =========================================================
-  const resolveQrNavigationTarget =
-    useCallback(
-      (
-        scannedValue
-      ) => {
-        const rawValue =
-          String(
-            scannedValue ||
-            ""
-          ).trim();
-        if (!rawValue) {
-          return null;
-        }
-
-        try {
-          const parsedUrl =
-            new URL(
-              rawValue
-            );
-          const pathParts =
-            parsedUrl.pathname
-              .split("/")
-              .filter(
-                Boolean
-              );
-
-          const formIndex =
-            pathParts.findIndex(
-              (
-                part
-              ) =>
-                part ===
-                "form-details"
-            );
-          if (
-            formIndex !==
-              -1 &&
-            pathParts[
-              formIndex +
-              1
-            ]
-          ) {
-            return `/fill-form/${pathParts[formIndex + 1]}`;
-          }
-
-          const shortLinkIndex =
-            pathParts.findIndex(
-              (
-                part
-              ) =>
-                part === "r"
-            );
-          if (
-            shortLinkIndex !==
-              -1 &&
-            pathParts[
-              shortLinkIndex +
-              1
-            ]
-          ) {
-            return `/fill-form/${pathParts[shortLinkIndex + 1]}`;
-          }
-        } catch {
-          // URL parse gagal: fallback gunakan raw string.
-        }
-
-        const fallbackIdentifier =
-          normalizeQrToken(
-            extractQrIdentifier(
-              rawValue
-            )
-          );
-        if (!fallbackIdentifier) {
-          return null;
-        }
-
-        if (/^\d+$/.test(fallbackIdentifier)) {
-          return `/fill-form/${fallbackIdentifier}`;
-        }
-
-        const routeLikeMatch =
-          String(
-            fallbackIdentifier
-          ).match(
-            /(?:^|[/?#])(?:form-details|r)[/?#]?([^/?#]+)/i
-          );
-        if (routeLikeMatch?.[1]) {
-          return `/fill-form/${routeLikeMatch[1]}`;
-        }
-
-        return null;
-      },
-      []
-    );
-  // =========================================================
-  // HANDLE SCAN SUCCESS
-  // =========================================================
-  const handleScanSuccess =
-    useCallback(
-      async (
-        decodedText
-      ) => {
-        if (
-          scanHandledRef.current
-        ) {
-          return;
-        }
-        scanHandledRef.current =
-          true;
-
-        const directTarget =
-          resolveQrNavigationTarget(
-            decodedText
-          );
-        const matchedForm =
-          await findFormFromQr(
-            decodedText
-          );
-
-        if (!matchedForm && !directTarget) {
-          scanHandledRef.current =
-            false;
-          setScannerStatus(
-            ""
-          );
-          setScannerError(
-            "QR Code tidak sesuai dengan form HiDocs yang aktif atau form sudah tidak tersedia."
-          );
-          return;
-        }
-
-        const finalTarget =
-          matchedForm
-            ? `/fill-form/${matchedForm.id}`
-            : directTarget;
-
-        if (
-          matchedForm &&
-          !matchedForm.isRemote &&
-          !isFormActive(
-            matchedForm
-          )
-        ) {
-          scanHandledRef.current =
-            false;
-          setScannerStatus(
-            ""
-          );
-          setScannerError(
-            "Form ini sedang dinonaktifkan oleh admin."
-          );
-          return;
-        }
-
-        setScannerError(
-          ""
-        );
-        if (matchedForm) {
-          if (
-            matchedForm.scheduleStatus ===
-            "not-open"
-          ) {
-            setScannerStatus(
-              `Form "${matchedForm.title}" berhasil ditemukan. Form belum dibuka.`
-            );
-          } else if (
-            matchedForm.scheduleStatus ===
-            "closed"
-          ) {
-            setScannerStatus(
-              `Form "${matchedForm.title}" berhasil ditemukan. Form sudah ditutup.`
-            );
-          } else {
-            setScannerStatus(
-              `Form "${matchedForm.title}" berhasil ditemukan.`
-            );
-          }
-          saveFormToUser(
-            matchedForm.id
-          );
-        } else {
-          setScannerStatus(
-            "QR Code valid. Membuka form..."
-          );
-        }
-
-        await stopScanner();
-        window.setTimeout(
-          () => {
-            setShowScanner(
-              false
-            );
-            navigate(
-              finalTarget
-            );
-          },
-          700
-        );
-      },
-      [
-        findFormFromQr,
-        navigate,
-        resolveQrNavigationTarget,
-        saveFormToUser,
-        stopScanner,
-      ]
-    );
-  // =========================================================
-  // START QR SCANNER
-  // =========================================================
-  const startScanner =
-    useCallback(
-      async () => {
-        setScannerError(
-          ""
-        );
-        setScannerStatus(
-          "Meminta izin kamera..."
-        );
-        scanHandledRef.current =
-          false;
-        try {
-          await stopScanner();
-          const readerElement =
-            document.getElementById(
-              "user-form-qr-reader"
-            );
-          if (!readerElement) {
-            throw new Error(
-              "QR reader element tidak ditemukan."
-            );
-          }
-          const scanner =
-            new Html5Qrcode(
-              "user-form-qr-reader"
-            );
-          scannerRef.current =
-            scanner;
-          await scanner.start(
-            {
-              facingMode: "environment",
-            },
-            {
-              fps: 10,
-              qrbox:
-                {
-                  width: 240,
-                  height: 240,
-                },
-              aspectRatio: 1,
-              disableFlip: false,
-            },
-            handleScanSuccess,
-            () => {
-              // Error pembacaan tiap frame sengaja diabaikan.
-            },
-            [Html5QrcodeSupportedFormats.QR_CODE]
-          );
-          setScannerRunning(
-            true
-          );
-          setScannerStatus(
-            "Arahkan kamera ke QR Code form."
-          );
-        } catch (error) {
-          console.error(
-            "Gagal membuka QR scanner:",
-            error
-          );
-          scannerRef.current =
-            null;
-          setScannerRunning(
-            false
-          );
-          setScannerStatus(
-            ""
-          );
-          setScannerError(
-            "Kamera tidak dapat dibuka. Pastikan izin kamera diberikan dan aplikasi dibuka melalui localhost atau HTTPS."
-          );
-        }
-      },
-      [
+  const startScanner = useCallback(async () => {
+    setScannerError("");
+    setScannerStatus("");
+    scanHandledRef.current = false;
+    try {
+      await stopScanner();
+      const el = document.getElementById("user-form-qr-reader");
+      if (!el) throw new Error("Reader element not found");
+      const scanner = new Html5Qrcode("user-form-qr-reader");
+      scannerRef.current = scanner;
+      await scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 230, height: 230 }, aspectRatio: 1 },
         handleScanSuccess,
-        stopScanner,
-      ]
+        () => { }
+      );
+      setScannerRunning(true);
+    } catch (err) {
+      console.warn("Scanner start failed:", err);
+      scannerRef.current = null;
+      setScannerRunning(false);
+      setScannerStatus("");
+      setScannerError(t?.dashboard?.cameraError || "Camera error.");
+    }
+  }, [stopScanner, handleScanSuccess, t]);
+
+  useEffect(() => {
+    if (!showScanner) return;
+    const timer = setTimeout(() => startScanner(), 250);
+    return () => clearTimeout(timer);
+  }, [showScanner, startScanner]);
+
+  useEffect(() => {
+    return () => { stopScanner(); };
+  }, [stopScanner]);
+
+  const isSubmitted = useCallback(
+    (formId) => Array.isArray(submittedForms) && submittedForms.some((item) => String(getSubmittedFormId(item)) === String(formId)),
+    [submittedForms]
+  );
+
+  const formsWithStatus = useMemo(() =>
+    forms.map((form) => {
+      const schedule = getFormScheduleStatus(form, currentDate);
+      const submitted = isSubmitted(form.id);
+      return { ...form, scheduleStatus: schedule.status, scheduleOpen: schedule.isOpen, submitted };
+    }),
+    [forms, currentDate, isSubmitted]
+  );
+
+  const filteredForms = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return formsWithStatus;
+    return formsWithStatus.filter((f) =>
+      (f.title || "").toLowerCase().includes(q) ||
+      (f.category || "").toLowerCase().includes(q) ||
+      (f.customLink || "").toLowerCase().includes(q)
     );
-  // =========================================================
-  // OPEN SCANNER
-  // =========================================================
-  const openScanner =
-    () => {
-      setShowScanner(
-        true
-      );
-      setScannerStatus(
-        ""
-      );
-      setScannerError(
-        ""
-      );
-      scanHandledRef.current =
-        false;
-    };
-  // =========================================================
-  // START SCANNER WHEN MODAL OPENS
-  // =========================================================
-  useEffect(
-    () => {
-      if (!showScanner) {
-        return undefined;
-      }
-      const timer =
-        window.setTimeout(
-          () => {
-            startScanner();
-          },
-          250
-        );
-      return () => {
-        window.clearTimeout(
-          timer
-        );
-      };
-    },
-    [
-      showScanner,
-      startScanner,
-    ]
-  );
-  // =========================================================
-  // SCANNER CLEANUP
-  // =========================================================
-  useEffect(
-    () => {
-      return () => {
-        const scanner =
-          scannerRef.current;
-        if (!scanner) {
-          return;
-        }
-        if (
-          scanner.isScanning
-        ) {
-          scanner
-            .stop()
-            .catch(
-              () => {}
-            );
-        }
-        scanner
-          .clear()
-          .catch(
-            () => {}
-          );
-      };
-    },
-    []
-  );
-  // =========================================================
-  // RETURN
-  // =========================================================
+  }, [formsWithStatus, search]);
+
   return (
-    <div
-      className={
-        darkMode
-          ? "user-forms-page dark"
-          : "user-forms-page"
-      }
-    >
-      {/* =====================================================
-          HEADER
-      ===================================================== */}
-      <header className="user-forms-header">
-        <div className="user-forms-header-decoration">
-          <span className="user-forms-circle circle-one"></span>
-          <span className="user-forms-circle circle-two"></span>
-          <div className="user-forms-dots">
-            {Array.from({
-              length: 12,
-            }).map(
-              (
-                _,
-                index
-              ) => (
-                <span
-                  key={
-                    index
-                  }
-                ></span>
-              )
-            )}
+    <div className={["user-forms-page", darkMode ? "dark" : ""].filter(Boolean).join(" ")}>
+      <style>{userFormsStyles}</style>
+
+      <main className="user-forms-main-content">
+        {/* Header Banner */}
+        <header className="user-forms-header">
+          <div className="user-forms-header-circle-1" />
+          <div className="user-forms-header-circle-2" />
+
+          <div className="user-forms-header-content">
+            <span className="user-forms-eyebrow">{t?.forms?.eyebrow || "Form Directory"}</span>
+            <h1>{t?.forms?.title || "Explore Forms"}</h1>
+            <p>{t?.forms?.subtitle || "Search available forms or scan a QR Code to open a private form."}</p>
           </div>
-        </div>
-        <div className="user-forms-header-content">
-          <div>
-            <span className="user-forms-eyebrow">
-              Form Directory
-            </span>
-            <h1>
-              Explore Forms
-            </h1>
-            <p>
-              Search available forms or scan a QR Code to open a private form.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="user-forms-scan-btn"
-            onClick={
-              openScanner
-            }
-          >
+
+          <button type="button" className="user-forms-scan-btn" onClick={() => setShowScanner(true)}>
             <FaQrcode />
-            <span>
-              Scan QR
-            </span>
+            <span>{t?.forms?.scanQr || "Scan QR"}</span>
           </button>
-        </div>
-      </header>
-      {/* =====================================================
-          CONTENT
-      ===================================================== */}
-      <main className="user-forms-content">
-        {/* ===================================================
-            TOOLBAR
-        =================================================== */}
+        </header>
+
+        {/* Toolbar */}
         <section className="user-forms-toolbar">
-          <div className="user-forms-toolbar-heading">
-            <span>
-              Available Forms
-            </span>
-            <h2>
-              All Forms
-            </h2>
-            <p>
-              {filteredForms.length}
-              {" "}
-              of
-              {" "}
-              {forms.length}
-              {" "}
-              forms displayed
-            </p>
+          <div className="user-forms-toolbar-info">
+            <h2>{t?.forms?.allForms || "All Forms"}</h2>
+            <p>{filteredForms.length} {t?.forms?.displayed || "of"} {forms.length} {t?.forms?.formsCount || "forms displayed"}</p>
           </div>
+
           <div className="user-forms-search">
-            <FaSearch />
+            <span className="user-forms-search-icon"><FaSearch /></span>
             <input
               type="text"
-              value={
-                search
-              }
-              onChange={(event) =>
-                setSearch(
-                  event.target.value
-                )
-              }
-              placeholder="Search form, category, or link..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t?.forms?.searchPlaceholder || "Search form, category, or link..."}
             />
             {search && (
-              <button
-                type="button"
-                onClick={() =>
-                  setSearch("")
-                }
-                aria-label="Clear search"
-              >
+              <button type="button" className="user-forms-search-clear" onClick={() => setSearch("")} aria-label="Clear search">
                 <FaTimes />
               </button>
             )}
           </div>
         </section>
-        {/* ===================================================
-            FORMS
-        =================================================== */}
+
+        {/* Grid */}
         <section className="user-forms-grid">
-          {filteredForms.length ===
-          0 ? (
+          {filteredForms.length > 0 ? (
+            filteredForms.map((form) => <UserFormCard key={form.id} form={form} t={t} />)
+          ) : (
             <div className="user-forms-empty">
               <div className="user-forms-empty-icon">
-                {search
-                  ? <FaSearch />
-                  : <FaClipboardList />
-                }
+                {search ? <FaSearch /> : <FaClipboardList />}
               </div>
-              <h3>
-                {search
-                  ? "No matching forms"
-                  : "No forms available"
-                }
-              </h3>
-              <p>
-                {search
-                  ? `No form matches “${search}”.`
-                  : "There are currently no public forms. Scan a QR Code to access a private form."
-                }
-              </p>
-              {search ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setSearch("")
-                  }
-                >
-                  Clear Search
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={
-                    openScanner
-                  }
-                >
-                  <FaQrcode />
-                  Scan QR Code
+              <h3>{search ? (t?.forms?.noMatchingTitle || "No matching forms") : (t?.forms?.noFormsTitle || "No forms available")}</h3>
+              <p>{search ? `${t?.forms?.noMatchingDesc || "No form matches"} "${search}".` : (t?.forms?.noFormsDesc || "There are currently no public forms.")}</p>
+              {search && (
+                <button type="button" className="user-forms-empty-btn" onClick={() => setSearch("")}>
+                  {t?.forms?.clearSearch || "Clear Search"}
                 </button>
               )}
             </div>
-          ) : (
-            filteredForms.map(
-              (
-                form
-              ) => {
-                const submitted =
-                  isSubmitted(
-                    form.id
-                  );
-                const isClosed =
-                  form.scheduleStatus ===
-                  "closed";
-                const isNotOpen =
-                  form.scheduleStatus ===
-                  "not-open";
-                return (
-                  <article
-                    key={
-                      form.id
-                    }
-                    className={[
-                      "user-form-card",
-                      submitted
-                        ? "submitted"
-                        : "",
-                      isClosed
-                        ? "closed"
-                        : "",
-                      isNotOpen
-                        ? "waiting"
-                        : "",
-                      form.accent,
-                    ]
-                      .filter(
-                        Boolean
-                      )
-                      .join(
-                        " "
-                      )}
-                  >
-                    {/* =======================================
-                        CARD HEADER
-                    ======================================= */}
-                    <div className="user-form-card-header">
-                      <div className="user-form-card-icon">
-                        {submitted
-                          ? <FaCheckCircle />
-                          : isClosed ||
-                            isNotOpen
-                          ? <FaRegCalendarAlt />
-                          : <FaClipboardList />
-                        }
-                      </div>
-                      <div className="user-form-status-group">
-                        <span
-                          className={[
-                            "user-form-status",
-                            submitted
-                              ? "submitted"
-                              : isClosed
-                              ? "closed"
-                              : isNotOpen
-                              ? "waiting"
-                              : "available",
-                          ].join(
-                            " "
-                          )}
-                        >
-                          {submitted ? (
-                            <>
-                              <FaCheck />
-                              Submitted
-                            </>
-                          ) : isClosed ? (
-                            <>
-                              <FaClock />
-                              Closed
-                            </>
-                          ) : isNotOpen ? (
-                            <>
-                              <FaRegCalendarAlt />
-                              Not Open Yet
-                            </>
-                          ) : (
-                            <>
-                              <span className="user-form-status-dot"></span>
-                              Available
-                            </>
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                    {/* =======================================
-                        CONTENT
-                    ======================================= */}
-                    <div className="user-form-card-content">
-                      <span className="user-form-category">
-                        <FaFileAlt />
-                        {form.category}
-                      </span>
-                      <h3>
-                        {form.title}
-                      </h3>
-                      <p>
-                        {submitted
-                          ? "You have already submitted this form."
-                          : isClosed
-                          ? "This form is already closed and can no longer accept responses."
-                          : isNotOpen
-                          ? "This form has been scheduled and is not open yet."
-                          : form.description
-                        }
-                      </p>
-                    </div>
-                    {/* =======================================
-                        META
-                    ======================================= */}
-                    <div className="user-form-meta">
-                      <span>
-                        <FaClipboardList />
-                        {form.questions}
-                        {" "}
-                        Questions
-                      </span>
-                      <span>
-                        <FaClock />
-                        {form.duration}
-                      </span>
-                      <span>
-                        <FaRegCalendarAlt />
-                        {form.deadline}
-                      </span>
-                    </div>
-                    {/* =======================================
-                        ACTION
-                    ======================================= */}
-                    <button
-                      type="button"
-                      className={[
-                        "user-form-details-btn",
-                        submitted
-                          ? "submitted"
-                          : "",
-                        isClosed
-                          ? "closed"
-                          : "",
-                        isNotOpen
-                          ? "waiting"
-                          : "",
-                      ]
-                        .filter(
-                          Boolean
-                        )
-                        .join(
-                          " "
-                        )}
-                      onClick={() =>
-                        openFormDetails(
-                          form
-                        )
-                      }
-                    >
-                      <FaEye />
-                      <span>
-                        {submitted
-                          ? "View Submitted Form"
-                          : isClosed
-                          ? "View Closed Form"
-                          : isNotOpen
-                          ? "View Schedule"
-                          : "View Form Details"
-                        }
-                      </span>
-                      <FaArrowRight />
-                    </button>
-                  </article>
-                );
-              }
-            )
           )}
         </section>
       </main>
-      {/* =====================================================
-          QR SCANNER MODAL
-      ===================================================== */}
+
+      {/* QR Scanner Modal */}
       {showScanner && (
-        <div
-          className="user-qr-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Scan QR Code"
-        >
-          <div className="user-qr-modal">
-            <div className="user-qr-modal-header">
-              <div>
-                <span>
-                  QR Scanner
-                </span>
-                <h2>
-                  Scan Form QR Code
-                </h2>
+        <div className="user-qr-overlay" onClick={closeScanner} role="dialog" aria-modal="true">
+          <div className="user-qr-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="user-qr-header">
+              <div className="user-qr-title">
+                <div className="user-qr-title-icon"><FaQrcode /></div>
+                <h3>{t?.dashboard?.scanModalTitle || "Scan QR Code"}</h3>
               </div>
-              <button
-                type="button"
-                className="user-qr-close-btn"
-                onClick={
-                  closeScanner
-                }
-                aria-label="Close scanner"
-              >
-                <FaTimes />
-              </button>
+              <button type="button" className="user-qr-close" onClick={closeScanner} aria-label="Close"><FaTimes /></button>
             </div>
-            <p className="user-qr-description">
-              Point your camera at a QR Code generated from the HiDocs admin form page.
-            </p>
+            <p className="user-qr-description">{t?.dashboard?.scanModalDesc || "Point camera at QR code."}</p>
             <div className="user-qr-reader-wrapper">
-              <div
-                id="user-form-qr-reader"
-                className="user-qr-reader"
-              ></div>
-              {!scannerRunning &&
-              !scannerError && (
+              <div id="user-form-qr-reader" className="user-qr-reader" />
+              {!scannerRunning && !scannerError && (
                 <div className="user-qr-loading">
-                  <span></span>
-                  <p>
-                    Opening camera...
-                  </p>
+                  <div className="user-qr-loading-icon" />
+                  <span>{t?.dashboard?.preparingCamera || "Preparing camera..."}</span>
                 </div>
               )}
             </div>
-            {scannerStatus && (
-              <div className="user-qr-message success">
-                <FaCheckCircle />
-                <span>
-                  {scannerStatus}
-                </span>
-              </div>
-            )}
-            {scannerError && (
-              <div className="user-qr-message error">
-                <span>
-                  !
-                </span>
-                <p>
-                  {scannerError}
-                </p>
-              </div>
-            )}
+            {scannerStatus && <div className="user-qr-status">{scannerStatus}</div>}
+            {scannerError && <div className="user-qr-error">{scannerError}</div>}
             <div className="user-qr-actions">
-              <button
-                type="button"
-                className="user-qr-cancel-btn"
-                onClick={
-                  closeScanner
-                }
-              >
-                Cancel
-              </button>
+              <button type="button" className="user-qr-cancel" onClick={closeScanner}>{t?.common?.cancel || "Cancel"}</button>
               {scannerError && (
-                <button
-                  type="button"
-                  className="user-qr-retry-btn"
-                  onClick={
-                    startScanner
-                  }
-                >
-                  <FaQrcode />
-                  Try Again
+                <button type="button" className="user-qr-retry" onClick={() => { setScannerError(""); setScannerStatus(""); scanHandledRef.current = false; startScanner(); }}>
+                  {t?.dashboard?.tryAgain || "Try Again"}
                 </button>
               )}
             </div>
           </div>
         </div>
       )}
-      {/* =====================================================
-          BOTTOM NAVIGATION
-      ===================================================== */}
-      <BottomNavigation
-        active="forms"
-      />
     </div>
   );
 }
-export default UserForms;

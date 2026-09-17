@@ -1,6 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../app_theme.dart';
+import '../l10n/app_localizations.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/custom_input.dart';
@@ -9,55 +11,39 @@ import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
-    with SingleTickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen> {
   final _emailCtrl = TextEditingController();
-  final _passwordCtrl = TextEditingController();
-  final _formKey      = GlobalKey<FormState>();
-  bool  _obscure      = true;
+  final _passCtrl = TextEditingController();
+  final _key = GlobalKey<FormState>();
 
-  late AnimationController _fadeCtrl;
-  late Animation<double>   _fadeAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _fadeCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 700));
-    _fadeAnim =
-        CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
-    _fadeCtrl.forward();
-  }
+  bool _obscure = true;
 
   @override
   void dispose() {
     _emailCtrl.dispose();
-    _passwordCtrl.dispose();
-    _fadeCtrl.dispose();
+    _passCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _handleLogin() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _login() async {
+    if (!_key.currentState!.validate()) return;
 
-    final auth = Provider.of<AuthProvider>(
-      context,
-      listen: false,
-    );
+    final auth = Provider.of<AuthProvider>(context, listen: false);
 
     await auth.login(
       _emailCtrl.text.trim(),
-      _passwordCtrl.text,
+      _passCtrl.text,
     );
 
     if (!mounted) return;
 
     if (auth.error != null) {
-      _showError(auth.error!);
+      _showSnack(auth.error!, AppTheme.error);
       auth.clearError();
       return;
     }
@@ -65,232 +51,322 @@ class _LoginScreenState extends State<LoginScreen>
     if (auth.isLoggedIn) {
       Navigator.pushNamedAndRemoveUntil(
         context,
-        '/role-select',
-        (route) => false,
+        '/user-home',
+        (_) => false,
       );
     }
   }
 
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Row(children: [
-        const Icon(Icons.error_outline_rounded,
-            color: Colors.white, size: 18),
-        const SizedBox(width: 10),
-        Expanded(
-            child: Text(msg,
-                style: const TextStyle(fontWeight: FontWeight.w500))),
-      ]),
-      backgroundColor: AppTheme.error,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12)),
-      margin: const EdgeInsets.all(16),
-    ));
+  void _showSnack(String message, Color backgroundColor) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(
+              Icons.info_outline_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder( borderRadius: BorderRadius.circular(12) ),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final auth   = Provider.of<AuthProvider>(context);
-    final size   = MediaQuery.of(context).size;
+    final auth = Provider.of<AuthProvider>(context);
+    final l10n = AppLocalizations.of(context);
+
+    final size = MediaQuery.of(context).size;
     final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: AppTheme.primary,
-      body: FadeTransition(
-        opacity: _fadeAnim,
-        child: Stack(children: [
-          Positioned(
-              top: -80, right: -60,
-              child: _Blob(220,
-                  AppTheme.primaryLight.withValues(alpha: 0.22))),
-          Positioned(
-              top: 80, left: -90,
-              child: _Blob(190,
-                  AppTheme.primaryDark.withValues(alpha: 0.45))),
-          Positioned(
-              top: size.height * 0.22, right: 48,
-              child: _Dot(8,
-                  AppTheme.accent.withValues(alpha: 0.85))),
-          Positioned(
-              top: size.height * 0.30, left: 52,
-              child: _Dot(5,
-                  Colors.white.withValues(alpha: 0.30))),
-          Positioned(
-              top: size.height * 0.38, right: 90,
-              child: _Dot(4,
-                  Colors.white.withValues(alpha: 0.18))),
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Stack(
+          children: [
+            Positioned(
+              top: -70,
+              right: -75,
+              child: _Blob(
+                230,
+                AppTheme.primaryLight.withValues(alpha: 0.20),
+              ),
+            ),
 
-          SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.only(bottom: bottom + 24),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
+            Positioned(
+              top: 145,
+              left: -115,
+              child: _Blob(
+                210,
+                AppTheme.primaryLight.withValues(alpha: 0.10),
+              ),
+            ),
+
+            Positioned(
+              bottom: -75,
+              left: -110,
+              child: _Blob(
+                260,
+                AppTheme.primaryDark.withValues(alpha: 0.42),
+              ),
+            ),
+
+            Positioned(
+              top: 190,
+              right: -35,
+              child: _Blob(
+                100,
+                AppTheme.accent.withValues(alpha: 0.07),
+              ),
+            ),
+
+            Positioned(
+              top: 130,
+              left: 90,
+              child: _Dot(
+                6,
+                Colors.white.withValues(alpha: 0.30),
+              ),
+            ),
+            Positioned(
+              top: 235,
+              right: 40,
+              child: _Dot(
+                5,
+                AppTheme.accent.withValues(alpha: 0.70),
+              ),
+            ),
+            Positioned(
+              bottom: 235,
+              right: 30,
+              child: _Dot(
+                5,
+                Colors.white.withValues(alpha: 0.22),
+              ),
+            ),
+
+            SafeArea(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.only(
+                  bottom: bottom + 20,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
                     minHeight: size.height -
                         MediaQuery.of(context).padding.top -
-                        MediaQuery.of(context).padding.bottom),
-                child: IntrinsicHeight(
+                        MediaQuery.of(context).padding.bottom -
+                        20,
+                  ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Padding(
-                        padding: EdgeInsets.fromLTRB(32, 40, 32, 0),
-                        child: Column(children: [
-                          HiDocsLogo(size: 84),
-                          SizedBox(height: 16),
-                          Text('HiDocs!',
-                              style: TextStyle(
-                                  fontSize: 38,
-                                  fontWeight: FontWeight.w900,
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          30,
+                          28,
+                          30,
+                          0,
+                        ),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const HiDocsLogo(
+                                size: 38,
+                                showShadow: false,
+                              ),
+                              const SizedBox(width: 11),
+                              const Text(
+                                'HiDocs!',
+                                style: TextStyle(
+                                  fontSize: 25,
+                                  fontWeight: FontWeight.w800,
                                   color: Colors.white,
-                                  letterSpacing: -1.5)),
-                          SizedBox(height: 6),
-                        ]),
+                                  letterSpacing: -1,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: 36),
+
+                      const SizedBox(height: 60),
 
                       Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 20),
-                        padding: const EdgeInsets.fromLTRB(28, 32, 28, 32),
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                        ),
+                        padding: const EdgeInsets.fromLTRB(
+                          30,
+                          32,
+                          30,
+                          28,
+                        ),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark
+                          color: isDark
                               ? AppTheme.darkCard
                               : Colors.white,
-                          borderRadius: BorderRadius.circular(28),
+                          borderRadius: BorderRadius.circular(32),
+                          border: isDark
+                              ? Border.all(
+                                  color: AppTheme.darkBorder,
+                                )
+                              : null,
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(
-                                alpha: Theme.of(context).brightness == Brightness.dark
-                                    ? 0.30
-                                    : 0.18,
+                                alpha: isDark ? 0.32 : 0.20,
                               ),
-                              blurRadius: 40,
-                              offset: const Offset(0, 12),
+                              blurRadius: 35,
+                              spreadRadius: 0,
+                              offset: const Offset(0, 15),
                             ),
                           ],
                         ),
                         child: Form(
-                          key: _formKey,
+                          key: _key,
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            crossAxisAlignment:
+                                CrossAxisAlignment.stretch,
                             children: [
                               Text(
-                                'Sign In',
+                                l10n.loginScreenTitle,
                                 style: TextStyle(
-                                  fontSize: 26,
+                                  fontSize: 24,
                                   fontWeight: FontWeight.w800,
-                                  color: Theme.of(context).brightness == Brightness.dark
+                                  color: isDark
                                       ? AppTheme.darkTextPrimary
                                       : AppTheme.textPrimary,
-                                  letterSpacing: -0.5,
+                                  letterSpacing: -0.7,
                                 ),
                               ),
 
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 5),
 
                               Text(
-                                'Welcome back! Login to your account.',
+                                l10n.loginScreenSubtitle,
                                 style: TextStyle(
-                                  fontSize: 13,
-                                  color: Theme.of(context).brightness == Brightness.dark
+                                  fontSize: 14,
+                                  color: isDark
                                       ? AppTheme.darkTextMuted
                                       : AppTheme.textMuted,
+                                  height: 1.4,
                                 ),
                               ),
 
-                              const SizedBox(height: 28),
+                              const SizedBox(height: 25),
 
                               CustomInput(
                                 controller: _emailCtrl,
-                                label: 'Email Address',
-                                hint: 'Enter your email',
-                                prefixIcon: Icons.mail_outline_rounded,
-                                keyboardType: TextInputType.emailAddress,
-                                validator: (v) {
-                                  if (v == null || v.isEmpty) {
-                                    return 'Email is required';
-                                  }
-                                  if (!RegExp(
-                                    r'^[^@]+@[^@]+\.[^@]+',
-                                  ).hasMatch(v)) {
-                                    return 'Invalid email format';
-                                  }
-                                  return null;
-                                },
+                                label: l10n.email,
+                                hint: l10n.emailPlaceholder,
+                                prefixIcon:
+                                    Icons.mail_outline_rounded,
+                                keyboardType:
+                                    TextInputType.emailAddress,
+                                validator: (v) =>
+                                    (v == null ||
+                                            !v.contains('@'))
+                                        ? l10n.wrongEmail
+                                        : null,
                               ),
 
-                              const SizedBox(height: 18),
+                              const SizedBox(height: 16),
 
                               CustomInput(
-                                controller: _passwordCtrl,
-                                label: 'Password',
-                                hint: 'Enter your password',
-                                prefixIcon: Icons.lock_outline_rounded,
+                                controller: _passCtrl,
+                                label: l10n.password,
+                                hint: l10n.passMin6,
+                                prefixIcon:
+                                    Icons.lock_outline_rounded,
                                 obscureText: _obscure,
                                 suffixIcon: IconButton(
                                   icon: Icon(
                                     _obscure
-                                        ? Icons.visibility_off_rounded
+                                        ? Icons
+                                            .visibility_off_rounded
                                         : Icons.visibility_rounded,
-                                    color: AppTheme.textMuted,
+                                    color: isDark
+                                        ? AppTheme.darkTextMuted
+                                        : AppTheme.textMuted,
                                     size: 20,
                                   ),
                                   onPressed: () {
-                                    setState(() => _obscure = !_obscure);
+                                    setState(() {
+                                      _obscure = !_obscure;
+                                    });
                                   },
                                 ),
-                                validator: (v) {
-                                  if (v == null || v.isEmpty) {
-                                    return 'Password is required';
-                                  }
-                                  if (v.length < 6) {
-                                    return 'Minimum 6 characters';
-                                  }
-                                  return null;
-                                },
+                                validator: (v) =>
+                                    (v == null || v.length < 6)
+                                        ? l10n.passMin6
+                                        : null,
                               ),
 
-                              const SizedBox(height: 32),
+                              const SizedBox(height: 30),
 
                               GradientButton(
-                                text: 'Sign In',
-                                onPressed: _handleLogin,
+                                text: l10n.login,
+                                onPressed: _login,
                                 isLoading: auth.isLoading,
                                 fullWidth: true,
                                 icon: Icons.login_rounded,
                               ),
 
-                              const SizedBox(height: 22),
+                              const SizedBox(height: 25),
 
                               Center(
                                 child: GestureDetector(
                                   onTap: () => Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (_) => const RegisterScreen(),
+                                      builder: (_) =>
+                                          const RegisterScreen(),
                                     ),
                                   ),
                                   child: RichText(
+                                    textAlign: TextAlign.center,
                                     text: TextSpan(
                                       style: TextStyle(
                                         fontSize: 14,
-                                        color: Theme.of(context).brightness == Brightness.dark
+                                        color: isDark
                                             ? AppTheme.darkTextMuted
                                             : AppTheme.textMuted,
                                       ),
-                                      children: const [
+                                      children: [
                                         TextSpan(
-                                          text: "Don't have an account? ",
+                                          text:
+                                              l10n.dontHaveAccount,
                                         ),
                                         TextSpan(
-                                          text: 'Sign up',
-                                          style: TextStyle(
+                                          text: l10n.signUpNow,
+                                          style: const TextStyle(
                                             color: AppTheme.primary,
-                                            fontWeight: FontWeight.w700,
-                                            decoration: TextDecoration.underline,
-                                            decorationColor: AppTheme.primary,
+                                            fontWeight:
+                                                FontWeight.w700,
+                                            decoration:
+                                                TextDecoration.underline,
+                                            decorationColor:
+                                                AppTheme.primary,
                                           ),
                                         ),
                                       ],
@@ -302,14 +378,29 @@ class _LoginScreenState extends State<LoginScreen>
                           ),
                         ),
                       ),
-                      const SizedBox(height: 40),
+
+                      const SizedBox(height: 22),
+
+                      Text(
+                        'HiDocs • Dynamic Form & Smart Assessment Platform',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.2,
+                          color: Colors.white.withValues(
+                            alpha: 0.55,
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
                     ],
                   ),
                 ),
               ),
             ),
-          ),
-        ]),
+          ],
+        ),
       ),
     );
   }
@@ -318,21 +409,37 @@ class _LoginScreenState extends State<LoginScreen>
 class _Blob extends StatelessWidget {
   final double size;
   final Color color;
+
   const _Blob(this.size, this.color);
+
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) {
+    return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: color));
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color,
+      ),
+    );
+  }
 }
 
 class _Dot extends StatelessWidget {
   final double size;
   final Color color;
+
   const _Dot(this.size, this.color);
+
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) {
+    return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: color));
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color,
+      ),
+    );
+  }
 }

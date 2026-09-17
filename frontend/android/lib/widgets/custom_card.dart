@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../app_theme.dart';
 
 class CustomCard extends StatelessWidget {
@@ -59,60 +59,3 @@ class CustomCard extends StatelessWidget {
   }
 }
 
-class StatCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color accentColor;
-  final bool dark;
-
-  const StatCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.accentColor,
-    this.dark = false,
-    super.key,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-        decoration: BoxDecoration(
-          color: dark
-              ? Colors.white.withValues(alpha: 0.08)
-              : accentColor.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: dark
-                ? Colors.white.withValues(alpha: 0.12)
-                : accentColor.withValues(alpha: 0.18),
-          ),
-        ),
-        child: Column(children: [
-          Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(
-              color: dark
-                  ? accentColor.withValues(alpha: 0.20)
-                  : accentColor.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 18, color: accentColor),
-          ),
-          const SizedBox(height: 10),
-          Text(value, style: TextStyle(
-              fontSize: 22, fontWeight: FontWeight.w800,
-              color: dark ? Colors.white : AppTheme.textPrimary)),
-          const SizedBox(height: 2),
-          Text(label, style: TextStyle(
-              fontSize: 11, fontWeight: FontWeight.w500,
-              color: dark ? Colors.white54 : AppTheme.textMuted),
-              textAlign: TextAlign.center),
-        ]),
-      ),
-    );
-  }
-}

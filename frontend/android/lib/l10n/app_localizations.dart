@@ -1,351 +1,1981 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 
-class AppLocalizations {
-  final Locale locale;
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/intl.dart' as intl;
 
-  AppLocalizations(this.locale);
+import 'app_localizations_en.dart';
+import 'app_localizations_id.dart';
+
+// ignore_for_file: type=lint
+
+/// Callers can lookup localized strings with an instance of AppLocalizations
+/// returned by `AppLocalizations.of(context)`.
+///
+/// Applications need to include `AppLocalizations.delegate()` in their app's
+/// `localizationDelegates` list, and the locales they support in the app's
+/// `supportedLocales` list. For example:
+///
+/// ```dart
+/// import 'l10n/app_localizations.dart';
+///
+/// return MaterialApp(
+///   localizationsDelegates: AppLocalizations.localizationsDelegates,
+///   supportedLocales: AppLocalizations.supportedLocales,
+///   home: MyApplicationHome(),
+/// );
+/// ```
+///
+/// ## Update pubspec.yaml
+///
+/// Please make sure to update your pubspec.yaml to include the following
+/// packages:
+///
+/// ```yaml
+/// dependencies:
+///   # Internationalization support.
+///   flutter_localizations:
+///     sdk: flutter
+///   intl: any # Use the pinned version from flutter_localizations
+///
+///   # Rest of dependencies
+/// ```
+///
+/// ## iOS Applications
+///
+/// iOS applications define key application metadata, including supported
+/// locales, in an Info.plist file that is built into the application bundle.
+/// To configure the locales supported by your app, you’ll need to edit this
+/// file.
+///
+/// First, open your project’s ios/Runner.xcworkspace Xcode workspace file.
+/// Then, in the Project Navigator, open the Info.plist file under the Runner
+/// project’s Runner folder.
+///
+/// Next, select the Information Property List item, select Add Item from the
+/// Editor menu, then select Localizations from the pop-up menu.
+///
+/// Select and expand the newly-created Localizations item then, for each
+/// locale your application supports, add a new item and select the locale
+/// you wish to add from the pop-up menu in the Value field. This list should
+/// be consistent with the languages listed in the AppLocalizations.supportedLocales
+/// property.
+abstract class AppLocalizations {
+  AppLocalizations(String locale)
+      : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+
+  final String localeName;
 
   static AppLocalizations of(BuildContext context) {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  bool get isIndonesian => locale.languageCode == 'id';
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 
-  // Common
-  String get appName => 'HiDocs!';
-  String get loading => isIndonesian ? 'Memuat...' : 'Loading...';
-  String get refresh => isIndonesian ? 'Segarkan' : 'Refresh';
-  String get cancel => isIndonesian ? 'Batal' : 'Cancel';
-  String get ok => isIndonesian ? 'OK' : 'OK';
-  String get save => isIndonesian ? 'Simpan' : 'Save';
-  String get delete => isIndonesian ? 'Hapus' : 'Delete';
-  String get edit => isIndonesian ? 'Edit' : 'Edit';
-  String get close => isIndonesian ? 'Tutup' : 'Close';
-  String get search => isIndonesian ? 'Cari' : 'Search';
-  String get settings => isIndonesian ? 'Pengaturan' : 'Settings';
+  /// A list of this localizations delegate along with the default localizations
+  /// delegates.
+  ///
+  /// Returns a list of localizations delegates containing this delegate along with
+  /// GlobalMaterialLocalizations.delegate, GlobalCupertinoLocalizations.delegate,
+  /// and GlobalWidgetsLocalizations.delegate.
+  ///
+  /// Additional delegates can be added by appending to this list in
+  /// MaterialApp. This list does not have to be used at all if a custom list
+  /// of delegates is preferred or required.
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+    delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+  ];
 
-  // User Home Screen
-  String get hello => isIndonesian ? 'Halo' : 'Hello';
-  String get home => isIndonesian ? 'Beranda' : 'Home';
-  String get history => isIndonesian ? 'Riwayat' : 'History';
-  String get profile => isIndonesian ? 'Profil' : 'Profile';
-  
-  String userHomeSubtitle(String name) => isIndonesian
-      ? 'Isi formulir dan kirim jawaban Anda'
-      : 'Fill out forms and submit your answers';
+  /// A list of this localizations delegate's supported locales.
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('en'),
+    Locale('id')
+  ];
 
-  String get scanQR => isIndonesian ? 'Pindai Barcode / QR' : 'Scan Barcode / QR';
-  String get scanQRSubtitle => isIndonesian ? 'Pindai kode formulir' : 'Scan form code';
-  String get enterLink => isIndonesian ? 'Masukkan Tautan' : 'Enter Link';
-  String get enterLinkSubtitle => isIndonesian ? 'Tempel tautan formulir' : 'Paste form link';
-  String get enterFormLinkTitle => isIndonesian ? 'Masukkan Tautan Formulir' : 'Enter Form Link';
-  String get enterFormLinkDesc => isIndonesian
-      ? 'Tempelkan tautan formulir untuk membuka dan mengisinya.'
-      : 'Paste the form link to open and fill it out.';
-  String get openForm => isIndonesian ? 'Buka Formulir' : 'Open Form';
-  String get alreadySubmittedForm => isIndonesian
-      ? 'Anda sudah mengirimkan formulir ini'
-      : "You've already submitted this form";
+  /// No description provided for @appName.
+  ///
+  /// In en, this message translates to:
+  /// **'HiDocs'**
+  String get appName;
 
-  String get recentForms => isIndonesian ? 'Formulir Terkini' : 'Recent Forms';
-  String get noRecentForms => isIndonesian ? 'Belum ada formulir' : 'No recent forms';
-  String get noRecentFormsDesc => isIndonesian
-      ? 'Formulir yang Anda isi akan muncul di sini'
-      : 'Forms you fill out will appear here';
+  /// No description provided for @appTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Dynamic forms & smart quizzes'**
+  String get appTagline;
 
-  String get noSubmissionHistory => isIndonesian ? 'Belum ada riwayat' : 'No submission history';
-  String get noSubmissionHistoryDesc => isIndonesian
-      ? 'Formulir yang sudah Anda kirim akan muncul di sini'
-      : 'Forms you have submitted will appear here';
+  /// No description provided for @login.
+  ///
+  /// In en, this message translates to:
+  /// **'Login'**
+  String get login;
 
-  String get historyDetailTitle => isIndonesian ? 'Detail Riwayat' : 'History Detail';
-  String get respondent => isIndonesian ? 'Responden' : 'Respondent';
-  String get submittedAt => isIndonesian ? 'Dikirim' : 'Submitted';
-  String get duration => isIndonesian ? 'Durasi' : 'Duration';
-  String get score => isIndonesian ? 'Nilai' : 'Score';
-  String get yourAnswers => isIndonesian ? 'Jawaban Anda' : 'Your Answers';
-  String get answerLabel => isIndonesian ? 'Jawaban' : 'Answer';
-  String get gradedLabel => isIndonesian ? 'Dinilai' : 'Graded';
+  /// No description provided for @register.
+  ///
+  /// In en, this message translates to:
+  /// **'Register'**
+  String get register;
 
-  String get submitted => isIndonesian ? 'Terkirim' : 'Submitted';
-  String get youHaveSubmitted => isIndonesian
-      ? 'Anda telah mengirim formulir ini'
-      : 'You have submitted this form';
+  /// No description provided for @user.
+  ///
+  /// In en, this message translates to:
+  /// **'User'**
+  String get user;
 
-  // Settings
-  String get language => isIndonesian ? 'Bahasa' : 'Language';
-  String get languageDescription => isIndonesian
-      ? 'Pilih bahasa aplikasi'
-      : 'Choose app language';
-  String get indonesian => 'Bahasa Indonesia';
-  String get english => 'English';
-  String get selectLanguage => isIndonesian ? 'Pilih Bahasa' : 'Select Language';
-  
-  String get darkMode => isIndonesian ? 'Mode Gelap' : 'Dark Mode';
-  String get lightMode => isIndonesian ? 'Mode Terang' : 'Light Mode';
-  String get switchTheme => isIndonesian ? 'Ganti tema aplikasi' : 'Switch app theme';
-  
-  String get modeUser => isIndonesian ? 'Mode User' : 'User Mode';
-  String get modeCreator => isIndonesian ? 'Mode Creator' : 'Creator Mode';
-  String get modeUserDesc => isIndonesian ? 'Mengisi dan mengerjakan formulir' : 'Fill out and complete forms';
-  String get modeCreatorDesc => isIndonesian ? 'Membuat dan mengelola formulir' : 'Create and manage forms';
-  
-  String get aboutHidocs => isIndonesian ? 'Tentang HiDocs!' : 'About HiDocs!';
-  String get aboutTitle => isIndonesian ? 'Tentang HiDocs' : 'About HiDocs';
-  String get aboutSectionTitle => isIndonesian ? 'Tentang' : 'About';
-  String get aboutDescription => isIndonesian
-      ? 'HiDocs! (Form & Exam Maker) adalah aplikasi multi-platform (Web & Mobile) yang menyediakan solusi efisien untuk membuat, mengelola, dan mengisi formulir digital, kuis, serta ujian online. Platform ini memiliki dua mode pengguna: Mode Creator untuk merancang formulir, mengelola soal, dan menganalisis respons, serta Mode User untuk mengakses formulir melalui tautan atau QR Code, mengirimkan jawaban, dan melihat riwayat pengiriman.'
-      : 'HiDocs! (Form & Exam Maker) is a multi-platform application (Web & Mobile) that provides an efficient solution for creating, managing, and completing digital forms, quizzes, and online exams. The platform features two user modes: Creator Mode for designing forms, managing questions, and analyzing responses, and User Mode for accessing forms via links or QR Codes, submitting answers, and viewing submission history.';
+  /// No description provided for @email.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get email;
 
-  String get creatorFeatures => isIndonesian ? 'Fitur Creator' : 'Creator Features';
-  String get userFeatures => isIndonesian ? 'Fitur User' : 'User Features';
-  
-  String get featCreateManageForms => isIndonesian ? 'Buat & Kelola Formulir' : 'Create & Manage Forms';
-  String get featManageQuestions => isIndonesian ? 'Kelola Pertanyaan' : 'Manage Questions';
-  String get featGenerateQr => isIndonesian ? 'Buat Tautan & QR Code' : 'Generate Link & QR Code';
-  String get featViewResponses => isIndonesian ? 'Lihat Respons' : 'View Responses';
-  String get featReviewGrade => isIndonesian ? 'Tinjau & Beri Nilai Jawaban' : 'Review & Grade Answers';
-  String get featExportResults => isIndonesian ? 'Export Hasil' : 'Export Results';
+  /// No description provided for @password.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get password;
 
-  String get featAccessViaQr => isIndonesian ? 'Akses Formulir via Tautan / QR Code' : 'Access Forms via Link or QR Code';
-  String get featFillForms => isIndonesian ? 'Isi Formulir' : 'Fill Out Forms';
-  String get featViewHistory => isIndonesian ? 'Lihat Riwayat Pengiriman' : 'View Submission History';
-  String get featOneTimeSubmit => isIndonesian ? 'Pengiriman Satu Kali' : 'One-Time Submission';
-  String get featLightDarkMode => isIndonesian ? 'Mode Terang & Gelap' : 'Light & Dark Mode';
+  /// No description provided for @confirmPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Password'**
+  String get confirmPassword;
 
-  String get thankYouUsing => isIndonesian ? 'Terima kasih telah menggunakan HiDocs!' : 'Thank you for using HiDocs!';
+  /// No description provided for @fullName.
+  ///
+  /// In en, this message translates to:
+  /// **'Full Name'**
+  String get fullName;
 
-  String get signOut => isIndonesian ? 'Keluar' : 'Sign Out';
-  String get editProfile => isIndonesian ? 'Edit Profil' : 'Edit Profile';
-  
-  String get changeRole => isIndonesian ? 'Ganti Peran' : 'Change Role';
-  String get backToRoleSelection => isIndonesian ? 'Kembali ke Pemilihan Peran' : 'Back to Role Selection';
+  /// No description provided for @username.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get username;
 
-  // Create / Edit Form Screen
-  String get editForm => isIndonesian ? 'Edit Form' : 'Edit Form';
-  String get createForm => isIndonesian ? 'Buat Form' : 'Create Form';
-  String get tabInfo => isIndonesian ? 'Info' : 'Info';
-  String get tabSettings => isIndonesian ? 'Pengaturan' : 'Settings';
-  String get tabQuestions => isIndonesian ? 'Pertanyaan' : 'Questions';
-  String get addAtLeastOneQuestion => isIndonesian
-      ? 'Tambahkan minimal 1 pertanyaan'
-      : 'Add at least 1 question';
-  String questionContentEmpty(int num) => isIndonesian
-      ? 'Pertanyaan $num masih kosong. Isi teks pertanyaan terlebih dahulu.'
-      : 'Question $num is empty. Please enter question text first.';
-  String get closeTimeBeforeOpenTime => isIndonesian
-      ? 'Waktu tutup tidak boleh sebelum waktu buka'
-      : 'Close time cannot be before open time';
-  String get mustBeLoggedInToCreateForm => isIndonesian
-      ? 'Anda harus login untuk membuat form'
-      : 'You must be logged in to create a form';
-  String get formSaveError => isIndonesian
-      ? 'Gagal menyimpan form. Periksa jaringan Anda.'
-      : 'Failed to save form. Check your network connection.';
-  String get formUpdatedSuccess => isIndonesian
-      ? 'Form berhasil diperbarui!'
-      : 'Form updated successfully!';
-  String get formCreatedSuccess => isIndonesian
-      ? 'Form berhasil dibuat!'
-      : 'Form created successfully!';
-  String get prepQuestionImages => isIndonesian
-      ? 'Menyiapkan gambar pertanyaan...'
-      : 'Preparing question images...';
-  String get finishingUp => isIndonesian ? 'Menyelesaikan...' : 'Finishing up...';
-  String convertingQuestionsToImages(int done, int total) => isIndonesian
-      ? 'Mengonversi pertanyaan ke gambar ($done/$total)'
-      : 'Converting questions to images ($done/$total)';
+  /// No description provided for @createAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Account'**
+  String get createAccount;
 
-  // Info Tab
-  String get formInformation => isIndonesian ? 'Informasi Form' : 'Form Information';
-  String get formTitleLabel => isIndonesian ? 'Judul Form' : 'Form Title';
-  String get formTitleHint => isIndonesian ? 'mis. Survei Kepuasan Siswa' : 'e.g. Student Satisfaction Survey';
-  String get formTitleRequired => isIndonesian ? 'Judul wajib diisi' : 'Title is required';
-  String get formTitleMinLength => isIndonesian ? 'Judul form minimal 3 karakter' : 'Form title must be at least 3 characters';
-  String get formLinkLabel => isIndonesian ? 'Link Form' : 'Form Link';
-  String get formLinkDesc => isIndonesian
-      ? 'Buat link singkat yang mudah dibagikan untuk form Anda.'
-      : 'Create a short, easily shareable link for your form.';
-  String get customLinkLabel => isIndonesian ? 'Link Kustom' : 'Custom Link';
-  String get customLinkHint => isIndonesian ? 'mis. survei-saya-2026' : 'e.g. my-survey-2026';
-  String get randomizeLinkTooltip => isIndonesian ? 'Buat link acak' : 'Generate random link';
-  String get sharingVisibilityLabel => isIndonesian ? 'Berbagi & Visibilitas' : 'Sharing & Visibility';
-  String get sharingVisibilityDesc => isIndonesian
-      ? 'Form publik muncul di halaman pengguna dan dapat dibagikan lewat link dan QR code. Form privat hanya bisa diakses dengan scan QR code.'
-      : 'Public forms appear on the user page and can be shared via link and QR code. Private forms can only be accessed by scanning the QR code.';
-  String get publicLabel => isIndonesian ? 'Publik' : 'Public';
-  String get publicSublabel => isIndonesian ? 'QR · Link · Halaman pengguna' : 'QR · Link · User page';
-  String get privateLabel => isIndonesian ? 'Privat' : 'Private';
-  String get privateSublabel => isIndonesian ? 'QR saja' : 'QR only';
-  String get scheduleLabel => isIndonesian ? 'Jadwal' : 'Schedule';
-  String get scheduleDesc => isIndonesian
-      ? 'Atur kapan form dibuka dan ditutup. Timer dihitung otomatis.'
-      : 'Set when the form opens and closes. Timer is calculated automatically.';
-  String get openLabel => isIndonesian ? 'Buka' : 'Open';
-  String get timeAtLabel => isIndonesian ? 'At' : 'At';
-  String get closeLabel => isIndonesian ? 'Tutup' : 'Close';
-  String get accessRangeLabel => isIndonesian ? 'Rentang Akses Form' : 'Form Access Range';
-  String get openUnlimited => isIndonesian ? 'Buka tanpa batas' : 'Open unlimited';
-  String accessDurationDaysHours(int days, int hours) => isIndonesian
-      ? '$days hari $hours jam'
-      : '$days days $hours hours';
-  String accessDurationDays(int days) => isIndonesian ? '$days hari' : '$days days';
-  String accessDurationHoursMins(int hours, int mins) => isIndonesian
-      ? '$hours jam $mins menit'
-      : '$hours hours $mins mins';
-  String accessDurationHours(int hours) => isIndonesian ? '$hours jam' : '$hours hours';
-  String accessDurationMins(int mins) => isIndonesian ? '$mins menit' : '$mins mins';
-  String get closeMustBeAfterOpen => isIndonesian
-      ? 'Waktu tutup harus setelah waktu buka'
-      : 'Close time must be after open time';
-  String get examDurationLabel => isIndonesian
-      ? 'Durasi Pengerjaan Soal (Menit)'
-      : 'Exam Duration (Minutes)';
-  String get examDurationHintText => isIndonesian
-      ? 'Maksimal 60 menit (1 jam). Isikan 0 untuk tanpa timer pengerjaan.'
-      : 'Maximum 60 minutes (1 hour). Enter 0 for no timer.';
-  String get noTimeLimit => isIndonesian ? 'Tanpa Batas Waktu' : 'No Time Limit';
-  String get selectDate => isIndonesian ? 'Pilih tanggal' : 'Select date';
-  String get selectTime => isIndonesian ? 'Pilih Waktu' : 'Select Time';
-  String get hoursLabel => isIndonesian ? 'Jam' : 'Hours';
-  String get minutesLabel => isIndonesian ? 'Menit' : 'Minutes';
+  /// No description provided for @dontHaveAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t have an account? '**
+  String get dontHaveAccount;
 
-  // Settings Tab
-  String get formTypeSecurityMode => isIndonesian
-      ? 'Tipe Form & Mode Keamanan'
-      : 'Form Type & Security Mode';
-  String get surveyModeTitle => isIndonesian ? 'Mode Survei' : 'Survey Mode';
-  String get surveyModeSub => isIndonesian
-      ? 'Form standar untuk feedback/pengumpulan data. Tanpa batasan anti-cheat atau screenshot.'
-      : 'Standard form for feedback/data collection. No anti-cheat or screenshot restrictions.';
-  String get examModeTitle => isIndonesian
-      ? 'Mode Ujian (Keamanan Anti-Cheat)'
-      : 'Exam Mode (Anti-Cheat Security)';
-  String get examModeSub => isIndonesian
-      ? 'Keamanan ketat aktif: blokir screenshot FLAG_SECURE, deteksi pindah aplikasi (maks 3 peringatan), dan proteksi rasterisasi soal.'
-      : 'Strict security enabled: FLAG_SECURE screenshot block, app-switch detection (max 3 warnings), and rasterized question protection.';
-  String get formBehaviorLabel => isIndonesian ? 'Perilaku Form' : 'Form Behavior';
-  String get shuffleQuestionsTitle => isIndonesian
-      ? 'Acak urutan pertanyaan'
-      : 'Shuffle question order';
-  String get shuffleQuestionsSub => isIndonesian
-      ? 'Setiap responden mendapat urutan pertanyaan berbeda'
-      : 'Each respondent gets questions in a different order';
-  String get shuffleOptionsTitle => isIndonesian
-      ? 'Acak pilihan jawaban'
-      : 'Shuffle answer options';
-  String get shuffleOptionsSub => isIndonesian
-      ? 'Opsi pilihan ganda diacak setiap kali'
-      : 'Multiple-choice options are randomized each time';
-  String get oneTimeSubmitTitle => isIndonesian
-      ? 'Hanya satu kali kirim'
-      : 'One-time submission only';
-  String get oneTimeSubmitSub => isIndonesian
-      ? 'Setiap orang hanya bisa mengirim sekali'
-      : 'Each person can only submit once';
-  String get activateImmediatelyTitle => isIndonesian
-      ? 'Aktifkan segera'
-      : 'Activate immediately';
-  String get activateImmediatelySub => isIndonesian
-      ? 'Form langsung aktif setelah disimpan'
-      : 'Form goes live right after you save';
-  String get resultVisibilityLabel => isIndonesian
-      ? 'Visibilitas Hasil'
-      : 'Result Visibility';
-  String get resultVisibilityDesc => isIndonesian
-      ? 'Pilih apa yang dilihat responden setelah mengirim.'
-      : 'Choose what respondents see after submitting.';
-  String get hideResultsTitle => isIndonesian ? 'Sembunyikan hasil' : 'Hide results';
-  String get hideResultsSub => isIndonesian
-      ? 'Responden tidak melihat apa pun setelah mengirim'
-      : 'Respondents see nothing after submission';
-  String get showResultOnlyTitle => isIndonesian
-      ? 'Tampilkan hasil saja'
-      : 'Show result only';
-  String get showResultOnlySub => isIndonesian
-      ? 'Mereka bisa melihat jawaban benar/salah'
-      : 'They can see which answers were correct/incorrect';
-  String get showResultAndScoreTitle => isIndonesian
-      ? 'Tampilkan hasil + nilai'
-      : 'Show result + score';
-  String get showResultAndScoreSub => isIndonesian
-      ? 'Mereka bisa melihat jawaban dan nilai akhir'
-      : 'They can see both their answers and final score';
+  /// No description provided for @haveAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Already have an account? '**
+  String get haveAccount;
 
-  // Questions Tab
-  String get addQuestionLabel => isIndonesian ? 'Tambah Pertanyaan' : 'Add Question';
-  String get noQuestionsYetTitle => isIndonesian ? 'Belum ada pertanyaan' : 'No questions yet';
-  String get noQuestionsYetSub => isIndonesian
-      ? 'Tambahkan pertanyaan pertama untuk mulai membangun form ini.'
-      : 'Add your first question to start building this form.';
-  String get qMultipleChoice => isIndonesian ? 'Pilihan Ganda' : 'Multiple Choice';
-  String get qMultipleChoiceSub => isIndonesian ? 'Pilih satu jawaban' : 'Choose one answer';
-  String get qImageChoice => isIndonesian ? 'Pilihan Gambar' : 'Image Choice';
-  String get qImageChoiceSub => isIndonesian ? 'Pilihan jawaban menggunakan gambar' : 'Answer choices using images';
-  String get qEssay => isIndonesian ? 'Esai' : 'Essay';
-  String get qEssaySub => isIndonesian ? 'Jawaban panjang' : 'Long-form answer';
-  String get qShortAnswer => isIndonesian ? 'Jawaban Singkat' : 'Short Answer';
-  String get qShortAnswerSub => isIndonesian ? 'Jawaban tertulis singkat' : 'Brief written answer';
-  String get qYesNo => isIndonesian ? 'Ya / Tidak' : 'Yes / No';
-  String get qYesNoSub => isIndonesian ? 'Pertanyaan ya atau tidak' : 'Yes or no question';
-  String get qRating => isIndonesian ? 'Penilaian' : 'Rating';
-  String get qRatingSub => isIndonesian ? 'Penilaian menggunakan bintang' : 'Rating using stars';
-  String get qCodeInput => isIndonesian ? 'Input Kode' : 'Code Input';
-  String get qCodeInputSub => isIndonesian ? 'Jawaban menggunakan kode program' : 'Answer using program code';
-  String get qMathFormula => isIndonesian ? 'Rumus Matematika' : 'Math Formula';
-  String get qMathFormulaSub => isIndonesian ? 'Jawaban rumus matematika' : 'Math formula answer';
-  String get writeQuestionHere => isIndonesian ? 'Tulis pertanyaan Anda di sini...' : 'Write your question here...';
-  String get moveUp => isIndonesian ? 'Pindah ke atas' : 'Move up';
-  String get moveDown => isIndonesian ? 'Pindah ke bawah' : 'Move down';
-  String get deleteQuestionTooltip => isIndonesian ? 'Hapus pertanyaan' : 'Delete question';
-  String get insertImageTooltip => isIndonesian ? 'Sisipkan gambar' : 'Insert image';
-  String get insertMathTooltip => isIndonesian ? 'Sisipkan rumus matematika' : 'Insert math formula';
-  String get insertCodeTooltip => isIndonesian ? 'Sisipkan blok kode' : 'Insert code block';
-  String get optionTextHint => isIndonesian ? 'Teks pilihan' : 'Option text';
-  String get addOptionLabel => isIndonesian ? 'Tambah pilihan' : 'Add option';
-  String get requiredLabel => isIndonesian ? 'Wajib diisi' : 'Required';
-  String get assignPointsLabel => isIndonesian ? 'Beri Poin' : 'Assign Points';
-  String get pointsMax100 => isIndonesian ? 'Poin (maks 100): ' : 'Points (max 100): ';
-  String get starsLabel => isIndonesian ? 'Bintang' : 'Stars';
-  String get correctAnswerOptional => isIndonesian ? 'Jawaban benar (opsional)' : 'Correct answer (optional)';
-  String get shortTextHintNote => isIndonesian ? 'Responden mengetik jawaban satu baris.' : 'Respondents type a one-line answer.';
-  String get longTextHintNote => isIndonesian ? 'Responden mengetik jawaban panjang.' : 'Respondents type a long-form answer.';
-  String get starterCodeHint => isIndonesian ? '// Tulis kode awal di sini...' : '// Write the starter code here...';
-  String get mathHintNote => isIndonesian
-      ? 'Responden mengetik jawaban rumus matematika (mis. LaTeX atau teks biasa). Anda dapat menyisipkan rumus pada teks pertanyaan di atas menggunakan tombol ∑ di toolbar.'
-      : 'Respondents type a math formula answer (e.g. LaTeX or plain text). You can embed a formula in the question text above using the ∑ button in the toolbar.';
-  String get insertCodeTitle => isIndonesian ? 'Sisipkan Kode' : 'Insert Code';
-  String get codePlaceholder => isIndonesian ? '// Tulis atau tempel kode Anda di sini...' : '// Write or paste your code here...';
-  String get insertLabel => isIndonesian ? 'Sisipkan' : 'Insert';
-  String get mathFormulaTitle => isIndonesian ? 'Rumus Matematika' : 'Mathematical Formula';
-  String get previewLabel => isIndonesian ? 'Pratinjau' : 'Preview';
-  String get insertFormulaLabel => isIndonesian ? 'Sisipkan Rumus' : 'Insert Formula';
-  String get enterLatexFormula => isIndonesian ? 'Masukkan rumus LaTeX' : 'Enter a LaTeX formula';
-  String get invalidLatexFormula => isIndonesian ? 'Rumus LaTeX tidak valid' : 'Invalid LaTeX formula';
-  String get deleteOptionTooltip => isIndonesian ? 'Hapus pilihan' : 'Delete option';
-  String get previewPlaceholder => isIndonesian ? 'Pratinjau akan muncul di sini' : 'Preview appears here';
-  String get failedToInsertImage => isIndonesian ? 'Gagal menyisipkan gambar' : 'Failed to insert image';
-  String mcqNeedsCorrectAnswer(int num) => isIndonesian
-      ? 'Pertanyaan $num (Pilihan Ganda) wajib memiliki jawaban benar. Tandai salah satu opsi sebagai benar agar bisa disimpan.'
-      : 'Question $num (Multiple Choice) must have a correct answer. Mark one option as correct to save the form.';
-  String get editBlockedHasResponses => isIndonesian
-      ? 'Form sudah memiliki responden. Edit dikunci agar jawaban tidak hilang. Duplikat form jika perlu perubahan.'
-      : 'Form already has responses. Edit is locked to preserve answers. Duplicate the form if you need changes.';
+  /// No description provided for @signUpNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign up now'**
+  String get signUpNow;
+
+  /// No description provided for @loginNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Login now'**
+  String get loginNow;
+
+  /// No description provided for @forgotPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot password?'**
+  String get forgotPassword;
+
+  /// No description provided for @otpVerification.
+  ///
+  /// In en, this message translates to:
+  /// **'OTP Verification'**
+  String get otpVerification;
+
+  /// No description provided for @enterOtp.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter OTP code'**
+  String get enterOtp;
+
+  /// No description provided for @verify.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify'**
+  String get verify;
+
+  /// No description provided for @resendCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend code'**
+  String get resendCode;
+
+  /// No description provided for @welcomeBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome back'**
+  String get welcomeBack;
+
+  /// No description provided for @backToLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Login'**
+  String get backToLogin;
+
+  /// No description provided for @home.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get home;
+
+  /// No description provided for @history.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get history;
+
+  /// No description provided for @settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settings;
+
+  /// No description provided for @about.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get about;
+
+  /// No description provided for @search.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get search;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
+
+  /// No description provided for @delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get delete;
+
+  /// No description provided for @edit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get edit;
+
+  /// No description provided for @close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get close;
+
+  /// No description provided for @submit.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit'**
+  String get submit;
+
+  /// No description provided for @next.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get next;
+
+  /// No description provided for @previous.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get previous;
+
+  /// No description provided for @back.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get back;
+
+  /// No description provided for @yes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get yes;
+
+  /// No description provided for @no.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get no;
+
+  /// No description provided for @confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get confirm;
+
+  /// No description provided for @loading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading...'**
+  String get loading;
+
+  /// No description provided for @optional.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional'**
+  String get optional;
+
+  /// No description provided for @required.
+  ///
+  /// In en, this message translates to:
+  /// **'Required'**
+  String get required;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try Again'**
+  String get retry;
+
+  /// No description provided for @none.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get none;
+
+  /// No description provided for @all.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get all;
+
+  /// No description provided for @searchPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Search...'**
+  String get searchPlaceholder;
+
+  /// No description provided for @nQuestions.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} questions'**
+  String nQuestions(Object count);
+
+  /// No description provided for @active.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get active;
+
+  /// No description provided for @closed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get closed;
+
+  /// No description provided for @inactive.
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive'**
+  String get inactive;
+
+  /// No description provided for @status.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get status;
+
+  /// No description provided for @type.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get type;
+
+  /// No description provided for @date.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get date;
+
+  /// No description provided for @time.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get time;
+
+  /// No description provided for @language.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get language;
+
+  /// No description provided for @language_switch_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get language_switch_title;
+
+  /// No description provided for @indonesian.
+  ///
+  /// In en, this message translates to:
+  /// **'Indonesian'**
+  String get indonesian;
+
+  /// No description provided for @english.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get english;
+
+  /// No description provided for @question.
+  ///
+  /// In en, this message translates to:
+  /// **'Question'**
+  String get question;
+
+  /// No description provided for @fillForm.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill Form'**
+  String get fillForm;
+
+  /// No description provided for @submitResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit Answers'**
+  String get submitResponse;
+
+  /// No description provided for @yourAnswers.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Answers'**
+  String get yourAnswers;
+
+  /// No description provided for @detail.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get detail;
+
+  /// No description provided for @score.
+  ///
+  /// In en, this message translates to:
+  /// **'Score'**
+  String get score;
+
+  /// No description provided for @points.
+  ///
+  /// In en, this message translates to:
+  /// **'Points'**
+  String get points;
+
+  /// No description provided for @totalScore.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Score'**
+  String get totalScore;
+
+  /// No description provided for @responses.
+  ///
+  /// In en, this message translates to:
+  /// **'Responses'**
+  String get responses;
+
+  /// No description provided for @chooseMultiple.
+  ///
+  /// In en, this message translates to:
+  /// **'Select more than one answer'**
+  String get chooseMultiple;
+
+  /// No description provided for @notSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Not selected'**
+  String get notSelected;
+
+  /// No description provided for @outOfStars.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} out of {max} stars'**
+  String outOfStars(Object max, Object value);
+
+  /// No description provided for @flagged.
+  ///
+  /// In en, this message translates to:
+  /// **'Flagged for review'**
+  String get flagged;
+
+  /// No description provided for @answered.
+  ///
+  /// In en, this message translates to:
+  /// **'Answered'**
+  String get answered;
+
+  /// No description provided for @notAnswered.
+  ///
+  /// In en, this message translates to:
+  /// **'Not answered'**
+  String get notAnswered;
+
+  /// No description provided for @current.
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get current;
+
+  /// No description provided for @questionNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Question Number'**
+  String get questionNumber;
+
+  /// No description provided for @questionsSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Question Summary'**
+  String get questionsSummary;
+
+  /// No description provided for @colorScheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Color Scheme'**
+  String get colorScheme;
+
+  /// No description provided for @pickColorScheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Color Theme'**
+  String get pickColorScheme;
+
+  /// No description provided for @pickColorSchemeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Customize your own colors'**
+  String get pickColorSchemeSubtitle;
+
+  /// No description provided for @customColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom Color'**
+  String get customColor;
+
+  /// No description provided for @customActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom Active'**
+  String get customActive;
+
+  /// No description provided for @pickColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Color'**
+  String get pickColor;
+
+  /// No description provided for @pickCustomColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Custom Color'**
+  String get pickCustomColor;
+
+  /// No description provided for @pickAnyColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose any color you like'**
+  String get pickAnyColor;
+
+  /// No description provided for @apply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get apply;
+
+  /// No description provided for @editProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Profile'**
+  String get editProfile;
+
+  /// No description provided for @emailCannotChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Email cannot be changed'**
+  String get emailCannotChange;
+
+  /// No description provided for @profileUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile updated successfully'**
+  String get profileUpdated;
+
+  /// No description provided for @logout.
+  ///
+  /// In en, this message translates to:
+  /// **'Logout'**
+  String get logout;
+
+  /// No description provided for @account.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get account;
+
+  /// No description provided for @appearance.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get appearance;
+
+  /// No description provided for @others.
+  ///
+  /// In en, this message translates to:
+  /// **'Others'**
+  String get others;
+
+  /// No description provided for @profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get profile;
+
+  /// No description provided for @authTokenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Access Token'**
+  String get authTokenTitle;
+
+  /// No description provided for @shareToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Share this token with participants. Keep the token private.'**
+  String get shareToken;
+
+  /// No description provided for @enterToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter access token'**
+  String get enterToken;
+
+  /// No description provided for @scanForm.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan Form'**
+  String get scanForm;
+
+  /// No description provided for @scanInstruction.
+  ///
+  /// In en, this message translates to:
+  /// **'Point your camera at the form QR code or barcode'**
+  String get scanInstruction;
+
+  /// No description provided for @scanSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Form found!'**
+  String get scanSuccess;
+
+  /// No description provided for @scanFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid QR code, barcode, or link. Try again.'**
+  String get scanFailed;
+
+  /// No description provided for @linkInput.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter Link'**
+  String get linkInput;
+
+  /// No description provided for @enterFormLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter form link'**
+  String get enterFormLink;
+
+  /// No description provided for @answerRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please answer all required questions first.'**
+  String get answerRequired;
+
+  /// No description provided for @submitSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Your answers were submitted successfully.'**
+  String get submitSuccess;
+
+  /// No description provided for @thankYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Thank You!'**
+  String get thankYou;
+
+  /// No description provided for @timeUpAutoSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Time is up! Your answers have been submitted automatically.'**
+  String get timeUpAutoSubmit;
+
+  /// No description provided for @noHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'No history yet'**
+  String get noHistory;
+
+  /// No description provided for @member.
+  ///
+  /// In en, this message translates to:
+  /// **'Member'**
+  String get member;
+
+  /// No description provided for @memberSince.
+  ///
+  /// In en, this message translates to:
+  /// **'Joined since {year}'**
+  String memberSince(Object year);
+
+  /// No description provided for @totalResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Responses'**
+  String get totalResponse;
+
+  /// No description provided for @joined.
+  ///
+  /// In en, this message translates to:
+  /// **'Joined'**
+  String get joined;
+
+  /// No description provided for @selectLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Language'**
+  String get selectLanguage;
+
+  /// No description provided for @uploadImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload Image'**
+  String get uploadImage;
+
+  /// No description provided for @removeImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Image'**
+  String get removeImage;
+
+  /// No description provided for @imagePickError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load image.'**
+  String get imagePickError;
+
+  /// No description provided for @loginScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Login to Your Account'**
+  String get loginScreenTitle;
+
+  /// No description provided for @loginScreenSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Please login to continue'**
+  String get loginScreenSubtitle;
+
+  /// No description provided for @wrongEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid email'**
+  String get wrongEmail;
+
+  /// No description provided for @passMin6.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum 8 characters'**
+  String get passMin6;
+
+  /// No description provided for @signIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign In'**
+  String get signIn;
+
+  /// No description provided for @min3.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum 3 characters'**
+  String get min3;
+
+  /// No description provided for @min6.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum 6 characters'**
+  String get min6;
+
+  /// No description provided for @emailRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Email is required'**
+  String get emailRequired;
+
+  /// No description provided for @passRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Password is required'**
+  String get passRequired;
+
+  /// No description provided for @userRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Username is required'**
+  String get userRequired;
+
+  /// No description provided for @nameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Name is required'**
+  String get nameRequired;
+
+  /// No description provided for @invalidEmailFmt.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid email format'**
+  String get invalidEmailFmt;
+
+  /// No description provided for @registerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign Up & Get Started'**
+  String get registerTitle;
+
+  /// No description provided for @registerSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Join HiDocs today!'**
+  String get registerSubtitle;
+
+  /// No description provided for @verifyEmailBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify Email'**
+  String get verifyEmailBtn;
+
+  /// No description provided for @verifyCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify OTP'**
+  String get verifyCreate;
+
+  /// No description provided for @otpCode.
+  ///
+  /// In en, this message translates to:
+  /// **'OTP Code'**
+  String get otpCode;
+
+  /// No description provided for @otp6digit.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the 6-digit OTP code'**
+  String get otp6digit;
+
+  /// No description provided for @otpDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the 6-digit OTP code sent to your email to complete registration.'**
+  String get otpDesc;
+
+  /// No description provided for @otp180.
+  ///
+  /// In en, this message translates to:
+  /// **'Your OTP code is valid for 180 seconds. Check your spam folder as well.'**
+  String get otp180;
+
+  /// No description provided for @otpSentTo.
+  ///
+  /// In en, this message translates to:
+  /// **'An OTP code has been sent to {email}.'**
+  String otpSentTo(Object email);
+
+  /// No description provided for @registerSuccessLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration successful! Please login.'**
+  String get registerSuccessLogin;
+
+  /// No description provided for @backToRegister.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit registration details'**
+  String get backToRegister;
+
+  /// No description provided for @resendOtp.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend OTP'**
+  String get resendOtp;
+
+  /// No description provided for @resendInSec.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend in {s} seconds'**
+  String resendInSec(Object s);
+
+  /// No description provided for @emailPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'name@domain.com'**
+  String get emailPlaceholder;
+
+  /// No description provided for @emailAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Email Address'**
+  String get emailAddress;
+
+  /// No description provided for @emailExample.
+  ///
+  /// In en, this message translates to:
+  /// **'example@hidocs.com'**
+  String get emailExample;
+
+  /// No description provided for @usernameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a username'**
+  String get usernameHint;
+
+  /// No description provided for @code6Hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the 6-digit code'**
+  String get code6Hint;
+
+  /// No description provided for @fillWorkForm.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill out & complete forms'**
+  String get fillWorkForm;
+
+  /// No description provided for @formDigitalPlatform.
+  ///
+  /// In en, this message translates to:
+  /// **'Digital form & exam platform'**
+  String get formDigitalPlatform;
+
+  /// No description provided for @greetHi.
+  ///
+  /// In en, this message translates to:
+  /// **'Hello, '**
+  String get greetHi;
+
+  /// No description provided for @helloWave.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome 👋'**
+  String get helloWave;
+
+  /// No description provided for @noFormsYetU.
+  ///
+  /// In en, this message translates to:
+  /// **'No completed forms yet'**
+  String get noFormsYetU;
+
+  /// No description provided for @noHistoryYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No history yet'**
+  String get noHistoryYet;
+
+  /// No description provided for @noHistorySub.
+  ///
+  /// In en, this message translates to:
+  /// **'Forms you have completed will appear here'**
+  String get noHistorySub;
+
+  /// No description provided for @lastHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent History'**
+  String get lastHistory;
+
+  /// No description provided for @seeAll.
+  ///
+  /// In en, this message translates to:
+  /// **'See All'**
+  String get seeAll;
+
+  /// No description provided for @noResultFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching forms'**
+  String get noResultFilter;
+
+  /// No description provided for @changeFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Try changing the filter or keyword.'**
+  String get changeFilter;
+
+  /// No description provided for @noResponseYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No responses yet'**
+  String get noResponseYet;
+
+  /// No description provided for @formImageGagal.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load image'**
+  String get formImageGagal;
+
+  /// No description provided for @formDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Form Details'**
+  String get formDetail;
+
+  /// No description provided for @formInfoSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Read the information below before filling out this form.'**
+  String get formInfoSub;
+
+  /// No description provided for @startFill.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Filling Form'**
+  String get startFill;
+
+  /// No description provided for @fillAsExam.
+  ///
+  /// In en, this message translates to:
+  /// **'This is an exam form. Make sure you are ready before starting.'**
+  String get fillAsExam;
+
+  /// No description provided for @duration.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get duration;
+
+  /// No description provided for @timerMinutesStr.
+  ///
+  /// In en, this message translates to:
+  /// **'{m} minutes'**
+  String timerMinutesStr(Object m);
+
+  /// No description provided for @closedStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get closedStatus;
+
+  /// No description provided for @activeStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get activeStatus;
+
+  /// No description provided for @draftStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive'**
+  String get draftStatus;
+
+  /// No description provided for @noQuestionYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No questions yet'**
+  String get noQuestionYet;
+
+  /// No description provided for @whichToken.
+  ///
+  /// In en, this message translates to:
+  /// **'An access token from the form creator is required'**
+  String get whichToken;
+
+  /// No description provided for @timerStartNote.
+  ///
+  /// In en, this message translates to:
+  /// **'The timer starts when the form begins and cannot be paused.'**
+  String get timerStartNote;
+
+  /// No description provided for @examReadyNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Make sure you are ready before starting.'**
+  String get examReadyNote;
+
+  /// No description provided for @autoSubmitNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Answers are submitted automatically when time runs out.'**
+  String get autoSubmitNote;
+
+  /// No description provided for @noQuestionsYetF.
+  ///
+  /// In en, this message translates to:
+  /// **'This form has no questions.'**
+  String get noQuestionsYetF;
+
+  /// No description provided for @pleaseWait.
+  ///
+  /// In en, this message translates to:
+  /// **'Please wait...'**
+  String get pleaseWait;
+
+  /// No description provided for @processing.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing...'**
+  String get processing;
+
+  /// No description provided for @emptyResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No results to display.'**
+  String get emptyResults;
+
+  /// No description provided for @filter.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter'**
+  String get filter;
+
+  /// No description provided for @sort.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort'**
+  String get sort;
+
+  /// No description provided for @reset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get reset;
+
+  /// No description provided for @formResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Form Results'**
+  String get formResult;
+
+  /// No description provided for @historyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get historyTitle;
+
+  /// No description provided for @noHistoryU.
+  ///
+  /// In en, this message translates to:
+  /// **'No history yet'**
+  String get noHistoryU;
+
+  /// No description provided for @historyAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer Details'**
+  String get historyAnswer;
+
+  /// No description provided for @historySubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitted'**
+  String get historySubmitted;
+
+  /// No description provided for @participant.
+  ///
+  /// In en, this message translates to:
+  /// **'Participant'**
+  String get participant;
+
+  /// No description provided for @valueScore.
+  ///
+  /// In en, this message translates to:
+  /// **'Score: {score}'**
+  String valueScore(Object score);
+
+  /// No description provided for @noSubmissionHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'No submission history yet'**
+  String get noSubmissionHistory;
+
+  /// No description provided for @scorePct.
+  ///
+  /// In en, this message translates to:
+  /// **'Score {score}%'**
+  String scorePct(Object score);
+
+  /// No description provided for @nilaiMax.
+  ///
+  /// In en, this message translates to:
+  /// **'Score: {score} / {max}'**
+  String nilaiMax(Object max, Object score);
+
+  /// No description provided for @nilaiOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Score: {score}'**
+  String nilaiOnly(Object score);
+
+  /// No description provided for @answerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer'**
+  String get answerLabel;
+
+  /// No description provided for @questionOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Question {c} / {total}'**
+  String questionOf(Object c, Object total);
+
+  /// No description provided for @questionNo.
+  ///
+  /// In en, this message translates to:
+  /// **'Question Number'**
+  String get questionNo;
+
+  /// No description provided for @legendAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Answered'**
+  String get legendAnswer;
+
+  /// No description provided for @legendFlag.
+  ///
+  /// In en, this message translates to:
+  /// **'Flagged'**
+  String get legendFlag;
+
+  /// No description provided for @legendBlank.
+  ///
+  /// In en, this message translates to:
+  /// **'Not answered'**
+  String get legendBlank;
+
+  /// No description provided for @legendNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get legendNow;
+
+  /// No description provided for @flagForReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Flag for review'**
+  String get flagForReview;
+
+  /// No description provided for @flaggedReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Flagged for review'**
+  String get flaggedReview;
+
+  /// No description provided for @unflag.
+  ///
+  /// In en, this message translates to:
+  /// **'Review flag removed'**
+  String get unflag;
+
+  /// No description provided for @flagAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Question flagged for review'**
+  String get flagAdded;
+
+  /// No description provided for @flagCountNote.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} questions flagged for review'**
+  String flagCountNote(Object n);
+
+  /// No description provided for @shortAnsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type a short answer...'**
+  String get shortAnsHint;
+
+  /// No description provided for @typingAnsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type your answer...'**
+  String get typingAnsHint;
+
+  /// No description provided for @writeCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write your code answer here...'**
+  String get writeCodeHint;
+
+  /// No description provided for @writeFormulaHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write your answer or formula...'**
+  String get writeFormulaHint;
+
+  /// No description provided for @leftCol.
+  ///
+  /// In en, this message translates to:
+  /// **'Left Column'**
+  String get leftCol;
+
+  /// No description provided for @rightCol.
+  ///
+  /// In en, this message translates to:
+  /// **'Right Column'**
+  String get rightCol;
+
+  /// No description provided for @choosePair.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Pair'**
+  String get choosePair;
+
+  /// No description provided for @pick.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose...'**
+  String get pick;
+
+  /// No description provided for @clearChoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get clearChoice;
+
+  /// No description provided for @submitAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit Answer'**
+  String get submitAnswer;
+
+  /// No description provided for @timeUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Time\'s Up'**
+  String get timeUp;
+
+  /// No description provided for @notAnsweredDash.
+  ///
+  /// In en, this message translates to:
+  /// **'— Not answered —'**
+  String get notAnsweredDash;
+
+  /// No description provided for @preparingImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing question images...'**
+  String get preparingImages;
+
+  /// No description provided for @convertingImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Converting questions to images ({done}/{total})'**
+  String convertingImages(Object done, Object total);
+
+  /// No description provided for @zoomOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom Out'**
+  String get zoomOut;
+
+  /// No description provided for @zoomIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom In'**
+  String get zoomIn;
+
+  /// No description provided for @failSendResp.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to submit answers. Check your connection.'**
+  String get failSendResp;
+
+  /// No description provided for @backToHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Home'**
+  String get backToHome;
+
+  /// No description provided for @askTokenFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask the form creator or supervisor for the token.'**
+  String get askTokenFrom;
+
+  /// No description provided for @wrongToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Incorrect token'**
+  String get wrongToken;
+
+  /// No description provided for @tokenEnsureCorrect.
+  ///
+  /// In en, this message translates to:
+  /// **' — make sure the token is correct'**
+  String get tokenEnsureCorrect;
+
+  /// No description provided for @checking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking...'**
+  String get checking;
+
+  /// No description provided for @continueAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get continueAction;
+
+  /// No description provided for @formAccessToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Form Access Token'**
+  String get formAccessToken;
+
+  /// No description provided for @hide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get hide;
+
+  /// No description provided for @show.
+  ///
+  /// In en, this message translates to:
+  /// **'Show'**
+  String get show;
+
+  /// No description provided for @tokenCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Access token copied'**
+  String get tokenCopied;
+
+  /// No description provided for @enterLinkFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the form link first.'**
+  String get enterLinkFirst;
+
+  /// No description provided for @formNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Form not found.'**
+  String get formNotFound;
+
+  /// No description provided for @alreadySubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'You have already submitted this form'**
+  String get alreadySubmitted;
+
+  /// No description provided for @pasteLinkToOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the form link to open and fill it out.'**
+  String get pasteLinkToOpen;
+
+  /// No description provided for @scanQrCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan QR Code'**
+  String get scanQrCode;
+
+  /// No description provided for @loadingForm.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading Form...'**
+  String get loadingForm;
+
+  /// No description provided for @infoExamTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Exam Time'**
+  String get infoExamTime;
+
+  /// No description provided for @infoToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Token'**
+  String get infoToken;
+
+  /// No description provided for @afterSubmitCant.
+  ///
+  /// In en, this message translates to:
+  /// **'After submitting, you cannot fill out this form again.'**
+  String get afterSubmitCant;
+
+  /// No description provided for @enterTokenStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter Token & Start'**
+  String get enterTokenStart;
+
+  /// No description provided for @hdImage.
+  ///
+  /// In en, this message translates to:
+  /// **'HD Image'**
+  String get hdImage;
+
+  /// No description provided for @statQuestions.
+  ///
+  /// In en, this message translates to:
+  /// **'Questions'**
+  String get statQuestions;
+
+  /// No description provided for @themeCustomize.
+  ///
+  /// In en, this message translates to:
+  /// **'Customize Theme'**
+  String get themeCustomize;
+
+  /// No description provided for @pilihBahasa.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Language'**
+  String get pilihBahasa;
+
+  /// No description provided for @themeImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Header Image'**
+  String get themeImage;
+
+  /// No description provided for @themeImageDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a photo as the dashboard header background'**
+  String get themeImageDesc;
+
+  /// No description provided for @themeReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore Default Theme'**
+  String get themeReset;
+
+  /// No description provided for @themeResetPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset header colors and image to the HiDocs default theme'**
+  String get themeResetPrompt;
+
+  /// No description provided for @themeResetConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to restore the default theme?'**
+  String get themeResetConfirm;
+
+  /// No description provided for @themeResetDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme restored to default'**
+  String get themeResetDone;
+
+  /// No description provided for @themeImagePicked.
+  ///
+  /// In en, this message translates to:
+  /// **'Image applied as theme'**
+  String get themeImagePicked;
+
+  /// No description provided for @themePickImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Image'**
+  String get themePickImage;
+
+  /// No description provided for @themeRemoveImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Image'**
+  String get themeRemoveImage;
+
+  /// No description provided for @pickImageFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to read the selected image'**
+  String get pickImageFailed;
+
+  /// No description provided for @navLegendAnswered.
+  ///
+  /// In en, this message translates to:
+  /// **'Answered'**
+  String get navLegendAnswered;
+
+  /// No description provided for @navLegendFlagged.
+  ///
+  /// In en, this message translates to:
+  /// **'Flagged / Review'**
+  String get navLegendFlagged;
+
+  /// No description provided for @navLegendUnanswered.
+  ///
+  /// In en, this message translates to:
+  /// **'Not Answered'**
+  String get navLegendUnanswered;
+
+  /// No description provided for @navLegendCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Question'**
+  String get navLegendCurrent;
+
+  /// No description provided for @flagQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Flag for Review'**
+  String get flagQuestion;
+
+  /// No description provided for @unflagQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Review Flag'**
+  String get unflagQuestion;
+
+  /// No description provided for @flaggedSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Flagged Questions: {count}'**
+  String flaggedSummary(Object count);
+
+  /// No description provided for @answeredSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Answered: {count}'**
+  String answeredSummary(Object count);
+
+  /// No description provided for @tokenRequiredErr.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the exam token to continue'**
+  String get tokenRequiredErr;
+
+  /// No description provided for @scoreCorrect.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct'**
+  String get scoreCorrect;
+
+  /// No description provided for @scoreIncorrect.
+  ///
+  /// In en, this message translates to:
+  /// **'Incorrect'**
+  String get scoreIncorrect;
+
+  /// No description provided for @scoreLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Score'**
+  String get scoreLabel;
+
+  /// No description provided for @scoreFinal.
+  ///
+  /// In en, this message translates to:
+  /// **'Final Score'**
+  String get scoreFinal;
+
+  /// No description provided for @questionPoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Points'**
+  String get questionPoint;
+
+  /// No description provided for @questionAnswered.
+  ///
+  /// In en, this message translates to:
+  /// **'Answered'**
+  String get questionAnswered;
+
+  /// No description provided for @aboutApp.
+  ///
+  /// In en, this message translates to:
+  /// **'About Application'**
+  String get aboutApp;
+
+  /// No description provided for @madeWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Made with ❤'**
+  String get madeWith;
+
+  /// No description provided for @aboutDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'HiDocs is a modern platform for creating and managing dynamic forms and online quizzes.'**
+  String get aboutDesc;
+
+  /// No description provided for @aboutHiDocsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'HiDocs! is an application that makes it easy for users to access and fill out digital forms, quizzes, and online exams. Users can access forms through links or QR Codes, submit their answers easily, and view their submission history and response results.'**
+  String get aboutHiDocsDesc;
+
+  /// No description provided for @userFeaturesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'User Features'**
+  String get userFeaturesTitle;
+
+  /// No description provided for @featAccessForms.
+  ///
+  /// In en, this message translates to:
+  /// **'Access Forms via Link or QR Code'**
+  String get featAccessForms;
+
+  /// No description provided for @featFillForms.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill Out Forms'**
+  String get featFillForms;
+
+  /// No description provided for @featViewHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'View Submission History'**
+  String get featViewHistory;
+
+  /// No description provided for @featOneTimeSubmission.
+  ///
+  /// In en, this message translates to:
+  /// **'One-Time Submission'**
+  String get featOneTimeSubmission;
+
+  /// No description provided for @thanksForUsing.
+  ///
+  /// In en, this message translates to:
+  /// **'Thank you for using HiDocs!'**
+  String get thanksForUsing;
+
+  /// No description provided for @connectionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection failed.'**
+  String get connectionFailed;
+
+  /// No description provided for @failedGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get failedGeneric;
+
+  /// No description provided for @failedDot.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed.'**
+  String get failedDot;
+
+  /// No description provided for @networkError.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection failed. Please check your internet connection.'**
+  String get networkError;
+
+  /// No description provided for @tryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Please try again.'**
+  String get tryAgain;
+
+  /// No description provided for @loadFailedConn.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load. Check your connection.'**
+  String get loadFailedConn;
+
+  /// No description provided for @errOccurred.
+  ///
+  /// In en, this message translates to:
+  /// **'An error occurred: {error}'**
+  String errOccurred(Object error);
+
+  /// No description provided for @failedErr.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed: {error}'**
+  String failedErr(Object error);
+
+  /// No description provided for @errorErr.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: {error}'**
+  String errorErr(Object error);
+
+  /// No description provided for @invalidEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid email'**
+  String get invalidEmail;
+
+  /// No description provided for @invalidPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must be at least 8 characters'**
+  String get invalidPassword;
+
+  /// No description provided for @requiredField.
+  ///
+  /// In en, this message translates to:
+  /// **'This field is required'**
+  String get requiredField;
+
+  /// No description provided for @fillAllFields.
+  ///
+  /// In en, this message translates to:
+  /// **'Please complete all fields.'**
+  String get fillAllFields;
+
+  /// No description provided for @passwordNotMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords do not match'**
+  String get passwordNotMatch;
+
+  /// No description provided for @otpSentSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'A new OTP code has been sent to your email.'**
+  String get otpSentSuccess;
+
+  /// No description provided for @otpInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid or expired OTP code.'**
+  String get otpInvalid;
+
+  /// No description provided for @registerSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration successful'**
+  String get registerSuccess;
+
+  /// No description provided for @accountCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Account created successfully.'**
+  String get accountCreated;
+
+  /// No description provided for @welcome.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome!'**
+  String get welcome;
+
+  /// No description provided for @loginSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Login successful.'**
+  String get loginSuccess;
+
+  /// No description provided for @loginFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Login failed. Please check your credentials.'**
+  String get loginFailed;
+
+  /// No description provided for @copy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get copy;
+
+  /// No description provided for @copied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied to clipboard'**
+  String get copied;
+
+  /// No description provided for @share.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get share;
+
+  /// No description provided for @scanQrAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan QR'**
+  String get scanQrAction;
+
+  /// No description provided for @pasteLinkAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste Link'**
+  String get pasteLinkAction;
+
+  /// No description provided for @helloNameWave.
+  ///
+  /// In en, this message translates to:
+  /// **'Hello, {name} 👋'**
+  String helloNameWave(Object name);
+
+  /// No description provided for @notFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Not Found'**
+  String get notFound;
+
+  /// No description provided for @lightMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Light Mode'**
+  String get lightMode;
+
+  /// No description provided for @darkMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark Mode'**
+  String get darkMode;
 }
 
-class AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
-  const AppLocalizationsDelegate();
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
+  const _AppLocalizationsDelegate();
 
   @override
-  bool isSupported(Locale locale) {
-    return ['en', 'id'].contains(locale.languageCode);
+  Future<AppLocalizations> load(Locale locale) {
+    return SynchronousFuture<AppLocalizations>(lookupAppLocalizations(locale));
   }
 
   @override
-  Future<AppLocalizations> load(Locale locale) async {
-    return AppLocalizations(locale);
-  }
+  bool isSupported(Locale locale) =>
+      <String>['en', 'id'].contains(locale.languageCode);
 
   @override
-  bool shouldReload(AppLocalizationsDelegate old) => false;
+  bool shouldReload(_AppLocalizationsDelegate old) => false;
+}
+
+AppLocalizations lookupAppLocalizations(Locale locale) {
+  // Lookup logic when only language code is specified.
+  switch (locale.languageCode) {
+    case 'en':
+      return AppLocalizationsEn();
+    case 'id':
+      return AppLocalizationsId();
+  }
+
+  throw FlutterError(
+      'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+      'an issue with the localizations generation tool. Please file an issue '
+      'on GitHub with a reproducible sample app and the gen-l10n configuration '
+      'that was used.');
 }

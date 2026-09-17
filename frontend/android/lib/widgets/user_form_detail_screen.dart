@@ -1,8 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../app_theme.dart';
 import '../models/form_model.dart';
+import '../screens/exam_token_screen.dart';
 import '../screens/fill_form_screen.dart';
+import '../l10n/app_localizations.dart';
 
 class UserFormDetailScreen extends StatelessWidget {
   final FormModel form;
@@ -14,47 +16,40 @@ class UserFormDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark =
-        Theme.of(context).brightness ==
-            Brightness.dark;
+    final l10n = AppLocalizations.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor =
+        isDark ? AppTheme.darkTextPrimary : AppTheme.textPrimary;
+    final secondaryTextColor =
+        isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
 
-    final primaryTextColor = isDark
-        ? AppTheme.darkTextPrimary
-        : AppTheme.textPrimary;
-
-    final secondaryTextColor = isDark
-        ? AppTheme.darkTextSecondary
-        : AppTheme.textSecondary;
+    final isExam = form.hasTimer;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Form Details',
-        ),
+        title: Text(l10n.formDetail),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
                 child: Container(
                   width: 82,
                   height: 82,
                   decoration: BoxDecoration(
-                    color: AppTheme.primary
-                        .withValues(
-                      alpha: 0.09,
-                    ),
-                    borderRadius:
-                        BorderRadius.circular(24),
+                    color: (isExam ? AppTheme.warning : AppTheme.primary)
+                        .withValues(alpha: 0.09),
+                    borderRadius: BorderRadius.circular(24),
                   ),
-                  child: const Icon(
-                    Icons.article_rounded,
+                  child: Icon(
+                    isExam
+                        ? Icons.quiz_rounded
+                        : Icons.article_rounded,
                     size: 40,
-                    color: AppTheme.primary,
+                    color: isExam ? AppTheme.warning : AppTheme.primary,
                   ),
                 ),
               ),
@@ -69,191 +64,166 @@ class UserFormDetailScreen extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                'Please read the information below before starting this form.',
+                isExam
+                    ? l10n.fillAsExam
+                    : l10n.formInfoSub,
                 style: TextStyle(
-                  fontSize: 14,
-                  height: 1.5,
-                  color: secondaryTextColor,
-                ),
+                    fontSize: 14, height: 1.5, color: secondaryTextColor),
               ),
               const SizedBox(height: 28),
+
               Container(
                 width: double.infinity,
-                padding:
-                    const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? AppTheme.darkCard
-                      : AppTheme.surfaceCard,
-                  borderRadius:
-                      BorderRadius.circular(18),
+                  color: isDark ? AppTheme.darkCard : AppTheme.surfaceCard,
+                  borderRadius: BorderRadius.circular(18),
                   border: Border.all(
-                    color: isDark
-                        ? AppTheme.darkBorder
-                        : AppTheme.border,
+                    color: isDark ? AppTheme.darkBorder : AppTheme.border,
                   ),
                 ),
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Form Information',
+                      'Informasi Form',
                       style: TextStyle(
-                        fontSize: 16,
-                        fontWeight:
-                            FontWeight.w700,
-                        color:
-                            primaryTextColor,
-                      ),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: primaryTextColor),
                     ),
                     const SizedBox(height: 18),
                     _InfoRow(
                       icon: Icons.edit_document,
-                      title: 'Form',
+                      title: 'Judul Form',
                       value: form.title,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     _InfoRow(
-                      icon: form.isActive
-                          ? Icons.info_outline_rounded
-                          : Icons.lock_clock_outlined,
-                      title: 'Status',
-                      value: form.isActive
-                          ? 'Available to fill'
-                          : 'Form Closed / Expired',
+                      icon: Icons.help_outline_rounded,
+                      title: 'Jumlah Soal',
+                      value: form.questions.isEmpty
+                          ? l10n.loading
+                          : l10n.nQuestions(form.questions.length),
                     ),
-                    const SizedBox(height: 16),
-                    const _InfoRow(
-                      icon: Icons.check_circle_outline,
-                      title: 'Submission',
-                      value:
-                          'You can only submit once',
-                    ),
+                    if (isExam) ...[
+                      const SizedBox(height: 14),
+                      _InfoRow(
+                        icon: Icons.timer_outlined,
+                        title: l10n.infoExamTime,
+                        value: l10n.timerMinutesStr(form.timerMinutes),
+                      ),
+                    ],
+                    if (form.hasAccessToken) ...[
+                      const SizedBox(height: 14),
+                      _InfoRow(
+                        icon: Icons.vpn_key_rounded,
+                        title: l10n.infoToken,
+                        value: l10n.whichToken,
+                      ),
+                    ] else ...[
+                      const SizedBox(height: 14),
+                      _InfoRow(
+                        icon: Icons.check_circle_outline,
+                        title: 'Pengiriman',
+                        value: 'Hanya bisa dikirim satu kali',
+                      ),
+                    ],
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+
               Container(
                 width: double.infinity,
-                padding:
-                    const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: (form.isActive ? AppTheme.warning : AppTheme.error)
-                      .withValues(
-                    alpha: 0.08,
-                  ),
-                  borderRadius:
-                      BorderRadius.circular(16),
+                  color: (isExam ? AppTheme.warning : AppTheme.info)
+                      .withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: (form.isActive ? AppTheme.warning : AppTheme.error)
-                        .withValues(
-                      alpha: 0.20,
-                    ),
+                    color: (isExam ? AppTheme.warning : AppTheme.info)
+                        .withValues(alpha: 0.20),
                   ),
                 ),
                 child: Row(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(
-                      form.isActive
-                          ? Icons.info_outline_rounded
-                          : Icons.error_outline_rounded,
-                      color: form.isActive ? AppTheme.warning : AppTheme.error,
+                      isExam
+                          ? Icons.warning_amber_rounded
+                          : Icons.info_outline_rounded,
+                      color: isExam ? AppTheme.warning : AppTheme.info,
                       size: 20,
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        form.isActive
-                            ? 'Make sure you are ready before starting. Once you submit your answers, you will not be able to fill out this form again.'
-                            : 'This form is no longer accepting responses because it has expired or has been closed.',
+                        isExam
+                            ? '${l10n.timerStartNote}${l10n.autoSubmitNote}'
+                            : 'Pastikan kamu siap sebelum memulai. ${l10n.afterSubmitCant}',
                         style: TextStyle(
-                          fontSize: 12,
-                          height: 1.5,
-                          color:
-                              secondaryTextColor,
-                        ),
+                            fontSize: 12, height: 1.5, color: secondaryTextColor),
                       ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 32),
+
               SizedBox(
                 width: double.infinity,
                 height: 54,
                 child: ElevatedButton.icon(
-                  onPressed: form.isActive
-                      ? () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  FillFormScreen(
-                                form: form,
-                              ),
-                            ),
-                          );
-                        }
-                      : () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Form ini sudah ditutup dan tidak dapat diisi.',
-                              ),
-                              backgroundColor: AppTheme.error,
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
+                  onPressed: () {
+                    if (form.hasAccessToken) {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ExamTokenScreen(form: form),
+                        ),
+                      );
+                    } else {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => FillFormScreen(form: form),
+                        ),
+                      );
+                    }
+                  },
                   icon: Icon(
-                    form.isActive
-                        ? Icons.play_arrow_rounded
-                        : Icons.lock_outline_rounded,
+                    form.hasAccessToken
+                        ? Icons.vpn_key_rounded
+                        : Icons.play_arrow_rounded,
                   ),
                   label: Text(
-                    form.isActive ? 'Start Filling Form' : 'Form Closed',
+                    form.hasAccessToken
+                        ? l10n.enterTokenStart
+                        : l10n.startFill,
                     style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight:
-                          FontWeight.w700,
-                    ),
+                        fontSize: 15, fontWeight: FontWeight.w700),
                   ),
-                  style:
-                      ElevatedButton.styleFrom(
+                  style: ElevatedButton.styleFrom(
                     backgroundColor:
-                        form.isActive ? AppTheme.primary : AppTheme.error,
-                    foregroundColor:
-                        Colors.white,
+                        form.hasAccessToken ? AppTheme.warning : AppTheme.primary,
+                    foregroundColor: Colors.white,
                     elevation: 0,
-                    shape:
-                        RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(
-                        15,
-                      ),
-                    ),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15)),
                   ),
                 ),
               ),
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 48,
                 child: TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
+                  onPressed: () => Navigator.pop(context),
                   child: Text(
-                    'Cancel',
+                    l10n.cancel,
                     style: TextStyle(
-                      fontWeight:
-                          FontWeight.w600,
-                      color:
-                          secondaryTextColor,
-                    ),
+                        fontWeight: FontWeight.w600, color: secondaryTextColor),
                   ),
                 ),
               ),
@@ -278,36 +248,23 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark =
-        Theme.of(context).brightness ==
-            Brightness.dark;
-
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: AppTheme.primary
-                .withValues(
-              alpha: 0.08,
-            ),
-            borderRadius:
-                BorderRadius.circular(10),
+            color: AppTheme.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(
-            icon,
-            size: 18,
-            color: AppTheme.primary,
-          ),
+          child: Icon(icon, size: 18, color: AppTheme.primary),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 title,
@@ -323,8 +280,7 @@ class _InfoRow extends StatelessWidget {
                 value,
                 style: TextStyle(
                   fontSize: 13,
-                  fontWeight:
-                      FontWeight.w600,
+                  fontWeight: FontWeight.w600,
                   color: isDark
                       ? AppTheme.darkTextPrimary
                       : AppTheme.textPrimary,

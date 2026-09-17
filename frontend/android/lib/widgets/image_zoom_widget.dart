@@ -1,7 +1,8 @@
-import 'dart:io';
+﻿import 'dart:io';
 
 import 'package:flutter/material.dart';
 import '../app_theme.dart';
+import '../l10n/app_localizations.dart';
 
 class ImageZoomWidget extends StatelessWidget {
   final String? imageUrl;
@@ -51,8 +52,8 @@ class ImageZoomWidget extends StatelessWidget {
                     Icon(Icons.broken_image_rounded, size: 52,
                         color: AppTheme.primary.withValues(alpha: 0.30)),
                     const SizedBox(height: 8),
-                    const Text('Gambar gagal dimuat',
-                        style: TextStyle(fontSize: 13,
+                    Text(AppLocalizations.of(context).formImageGagal,
+                        style: const TextStyle(fontSize: 13,
                             color: AppTheme.textMuted)),
                   ]),
                 ),
@@ -75,8 +76,8 @@ class ImageZoomWidget extends StatelessWidget {
                   Icon(Icons.broken_image_rounded, size: 52,
                       color: AppTheme.primary.withValues(alpha: 0.30)),
                   const SizedBox(height: 8),
-                  const Text('Gambar gagal dimuat',
-                      style: TextStyle(fontSize: 13,
+                  Text(AppLocalizations.of(context).formImageGagal,
+                      style: const TextStyle(fontSize: 13,
                           color: AppTheme.textMuted)),
                 ]),
               ),
@@ -139,7 +140,7 @@ class _FullScreenZoom extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFF0D0D0D),
         foregroundColor: Colors.white,
-        title: const Text('Gambar HD', style: TextStyle(fontSize: 16)),
+        title: Text(AppLocalizations.of(context).hdImage, style: const TextStyle(fontSize: 16)),
         actions: [
           IconButton(
             icon: const Icon(Icons.close_rounded),
@@ -158,14 +159,16 @@ class _FullScreenZoom extends StatelessWidget {
                 : Hero(
                     tag: imageUrl!,
                     child: Image.network(imageUrl!,
-                        errorBuilder: (_, __, ___) => const Column(
+                        errorBuilder: (_, __, ___) => Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.image_rounded,
+                                const Icon(Icons.image_rounded,
                                     size: 100, color: Colors.white24),
-                                SizedBox(height: 16),
-                                Text('Gambar gagal dimuat',
-                                    style: TextStyle(
+                                const SizedBox(height: 16),
+                                Text(
+                                    AppLocalizations.of(context)
+                                        .formImageGagal,
+                                    style: const TextStyle(
                                         color: Colors.white54, fontSize: 14)),
                               ],
                             )),

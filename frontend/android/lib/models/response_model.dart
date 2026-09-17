@@ -1,4 +1,4 @@
-import 'form_model.dart';
+﻿import 'form_model.dart';
 import 'question_model.dart';
 
 class ResponseModel {
@@ -32,7 +32,7 @@ class ResponseModel {
     this.respondentId = '',
     Map<String, dynamic>? answers,
     this.score = 0,
-    this.maxScore = 100,
+    this.maxScore = 0,
     Map<String, double>? essayScores,
     Map<String, double>? autoScores,
   })  : answers = answers ?? {},
@@ -92,8 +92,21 @@ class ResponseModel {
             (a['selected_option_id'] ?? '').toString();
         final answerText = (a['answer_text'] ?? '').toString();
 
+        final isCheckbox =
+            form?.questions.any((q) => q.id == qid && q.type == QuestionType.checkbox) ??
+                false;
+
         if (selectedOptionID.isNotEmpty) {
-          answers[qid] = selectedOptionID;
+          if (isCheckbox) {
+            final existing = answers[qid];
+            if (existing is Set<String>) {
+              existing.add(selectedOptionID);
+            } else {
+              answers[qid] = <String>{selectedOptionID};
+            }
+          } else {
+            answers[qid] = selectedOptionID;
+          }
         } else if (answerText.isNotEmpty) {
           answers[qid] = answerText;
         } else {
@@ -107,9 +120,6 @@ class ResponseModel {
                   false;
 
           if (isEssay) {
-            // Backend does not update per-answer score for manual grades;
-            // score_given stays 0 as placeholder. Ignore 0 so that
-            // persisted local grades (real 0-100) are not overwritten.
             if (s != 0) {
               essayScores[qid] = s;
             }
@@ -121,8 +131,6 @@ class ResponseModel {
     }
 
     final email = (json['respondent_email'] ?? '').toString();
-    final respondentId =
-        (json['user_id'] ?? json['respondent_id'] ?? '').toString();
     final submittedAt =
         DateTime.tryParse(json['submitted_at']?.toString() ?? '')
                 ?.toLocal() ??
@@ -136,16 +144,13 @@ class ResponseModel {
       id: (json['id'] ?? '').toString(),
       formId: (json['form_id'] ?? '').toString(),
       formTitle: form?.title ?? (json['form_title'] ?? '').toString(),
-      respondentId: respondentId,
-      respondentName: (json['respondent_name'] ?? '').toString().isNotEmpty
-          ? (json['respondent_name'] as String)
-          : nameFromEmail(email),
+      respondentName: nameFromEmail(email),
       respondentEmail: email,
       startedAt: submittedAt,
       submittedAt: submittedAt,
       answers: answers,
       score: totalScore,
-      maxScore: form?.maxScore ?? 100,
+      maxScore: form != null && form.maxScore > 0 ? form.maxScore : 0,
       essayScores: essayScores,
       autoScores: autoScores,
     );
@@ -160,7 +165,7 @@ class ResponseModel {
     String responseId = '',
     double? totalScore,
     DateTime? submittedAt,
-    double maxScore = 100,
+    double maxScore = 0,
   }) {
     final submitted = submittedAt ?? DateTime.now();
 
@@ -200,8 +205,10 @@ class ResponseModel {
           ? (json['score'] as num).toDouble()
           : 0,
       maxScore: (json['max_score'] is num)
-          ? (json['max_score'] as num).toDouble()
-          : 100,
+          ? ((json['max_score'] as num) > 0
+              ? (json['max_score'] as num).toDouble()
+              : 0)
+          : 0,
       essayScores: _toDoubleMap(json['essay_scores']),
       autoScores: _toDoubleMap(json['auto_scores']),
     );

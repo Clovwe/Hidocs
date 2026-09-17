@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../app_theme.dart';
+import '../l10n/app_localizations.dart';
 
 class CodeBlockWidget extends StatelessWidget {
   final String code;
@@ -43,7 +44,7 @@ class CodeBlockWidget extends StatelessWidget {
               onTap: () {
                 Clipboard.setData(ClipboardData(text: code));
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: const Text('Kode disalin'),
+                  content: Text(AppLocalizations.of(context).copied),
                   duration: const Duration(seconds: 1),
                   behavior: SnackBarBehavior.floating,
                   backgroundColor: AppTheme.success,

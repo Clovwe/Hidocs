@@ -1,17 +1,20 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../app_theme.dart';
+import '../l10n/app_localizations.dart';
 import '../models/form_model.dart';
 import '../models/question_model.dart';
 import '../models/response_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/form_provider.dart';
 import '../providers/response_provider.dart';
-import '../widgets/math_formula_widget.dart';
+import '../widgets/audio_player_widget.dart';
 import '../widgets/code_block_widget.dart';
+import '../widgets/math_formula_widget.dart';
 import '../widgets/rich_text_view.dart';
-import '../l10n/app_localizations.dart';
 
 class HistoryDetailScreen extends StatefulWidget {
   final FormModel form;
@@ -30,33 +33,60 @@ class HistoryDetailScreen extends StatefulWidget {
 class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   late FormModel _form;
   late ResponseModel _response;
+
   bool _loadingQuestions = false;
+  bool _loadingResponse = false;
 
   @override
   void initState() {
     super.initState();
+
     _form = widget.form;
     _response = widget.response;
+
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
     if (_form.questions.isEmpty) {
-      _loadFullForm();
+      await _loadFullForm();
     } else {
-      _ensureResponseLoaded();
+      await _ensureResponseLoaded();
     }
   }
 
   Future<void> _loadFullForm() async {
     if (_loadingQuestions) return;
-    _loadingQuestions = true;
 
-    final fp = Provider.of<FormProvider>(context, listen: false);
-    final detail = await fp.loadFormDetail(_form.id);
+    setState(() {
+      _loadingQuestions = true;
+    });
 
-    if (!mounted) return;
-    _loadingQuestions = false;
+    final formProvider = Provider.of<FormProvider>(
+      context,
+      listen: false,
+    );
 
-    if (detail != null && detail.questions.isNotEmpty) {
+    try {
+      final detail = await formProvider.loadFormDetail(_form.id);
+
+      if (!mounted) return;
+
+      if (detail != null) {
+        setState(() {
+          _form = detail;
+          _loadingQuestions = false;
+        });
+      } else {
+        setState(() {
+          _loadingQuestions = false;
+        });
+      }
+    } catch (_) {
+      if (!mounted) return;
+
       setState(() {
-        _form = detail;
+        _loadingQuestions = false;
       });
     }
 
@@ -65,206 +95,730 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
 
   Future<void> _ensureResponseLoaded() async {
     if (_response.answers.isNotEmpty) return;
+    if (_loadingResponse) return;
 
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    final rp = Provider.of<ResponseProvider>(context, listen: false);
+    _loadingResponse = true;
 
-    await rp.loadResponsesForForm(_form.id, form: _form);
+    final auth = Provider.of<AuthProvider>(
+      context,
+      listen: false,
+    );
 
-    if (!mounted) return;
+    final responseProvider = Provider.of<ResponseProvider>(
+      context,
+      listen: false,
+    );
 
-    final myEmail = auth.currentUser?.email ?? '';
-    final myId = auth.currentUser?.id ?? '';
-    final all = rp.getResponsesByForm(_form.id);
-    final mine = all
-        .where(
-          (r) =>
-              (myEmail.isNotEmpty && r.respondentEmail == myEmail) ||
-              (myId.isNotEmpty && r.respondentId == myId),
-        )
-        .toList();
-    final match = mine.isNotEmpty ? mine.first : null;
+    try {
+      if (!mounted) return;
 
-    if (match != null && match.answers.isNotEmpty) {
-      setState(() {
-        _response = match;
-      });
-    }
-  }
+      final currentId = auth.currentUser?.id ?? '';
+      final currentEmail = auth.currentUser?.email ?? '';
 
-  String _formatDateTime(DateTime dt) {
-    final h = dt.hour.toString().padLeft(2, '0');
-    final m = dt.minute.toString().padLeft(2, '0');
-    return '${dt.day}/${dt.month}/${dt.year}  $h:$m';
-  }
+      final responses = responseProvider.getResponsesByRespondent(
+        currentId,
+      );
 
-  String _answerText(QuestionModel q, dynamic answer) {
-    if (answer == null) return '-';
+      ResponseModel? matched;
 
-    String byText(String fallback) {
-      final normalized = answer.toString().trim().toLowerCase();
-      for (final opt in q.options) {
-        if (opt.text.trim().toLowerCase() == normalized) {
-          return opt.text;
+      for (final response in responses) {
+        final sameId = currentId.isNotEmpty &&
+            response.respondentId == currentId;
+
+        final sameEmail = currentEmail.isNotEmpty &&
+            response.respondentEmail.toLowerCase() ==
+                currentEmail.toLowerCase();
+
+        if (sameId || sameEmail) {
+          matched = response;
+          break;
         }
       }
+
+      if (matched != null) {
+        setState(() {
+          _response = matched!;
+        });
+      }
+    } catch (_) {
+      // Keep the response passed from HistoryScreen.
+    }
+
+    _loadingResponse = false;
+  }
+
+  String _answerText(
+    QuestionModel question,
+    dynamic answer,
+    AppLocalizations l10n,
+  ) {
+    if (answer == null) {
+      return l10n.notAnsweredDash;
+    }
+
+    String findOptionText(String fallback) {
+      final normalized = answer.toString().trim().toLowerCase();
+
+      for (final option in question.options) {
+        if (option.text.trim().toLowerCase() == normalized) {
+          return option.text;
+        }
+      }
+
       return fallback;
     }
 
-    switch (q.type) {
+    switch (question.type) {
+      case QuestionType.checkbox:
+        Set<String> selectedIds;
+
+        if (answer is Set) {
+          selectedIds = answer.map((e) => e.toString()).toSet();
+        } else if (answer is List) {
+          selectedIds = answer.map((e) => e.toString()).toSet();
+        } else {
+          selectedIds = {answer.toString()};
+        }
+
+        final selectedOptions = question.options
+            .where((option) => selectedIds.contains(option.id))
+            .map((option) => option.text)
+            .toList();
+
+        if (selectedOptions.isEmpty) {
+          return selectedIds.isEmpty
+              ? l10n.notAnsweredDash
+              : selectedIds.join(', ');
+        }
+
+        return selectedOptions.join(', ');
+
       case QuestionType.multipleChoice:
       case QuestionType.imageChoice:
-        for (final opt in q.options) {
-          if (opt.id == answer) return opt.text;
+        for (final option in question.options) {
+          if (option.id == answer.toString()) {
+            return option.text;
+          }
         }
-        return byText(answer.toString());
+
+        return findOptionText(answer.toString());
 
       case QuestionType.yesNo:
-        for (final opt in q.options) {
-          if (opt.id == answer) return opt.text;
+        for (final option in question.options) {
+          if (option.id == answer.toString()) {
+            return option.text;
+          }
         }
-        return byText(answer == 'yes' ? 'Yes' : 'No');
+
+        return findOptionText(
+          answer.toString().toLowerCase() == 'yes'
+              ? l10n.yes
+              : l10n.no,
+        );
 
       case QuestionType.rating:
-        return '$answer out of ${q.ratingMax ?? 5}';
+        return l10n.outOfStars(
+          question.ratingMax ?? 5,
+          answer,
+        );
+
+      case QuestionType.matching:
+        try {
+          Map<String, dynamic> map;
+
+          if (answer is Map) {
+            map = Map<String, dynamic>.from(answer);
+          } else {
+            final decoded = jsonDecode(answer.toString());
+
+            if (decoded is Map) {
+              map = Map<String, dynamic>.from(decoded);
+            } else {
+              return answer.toString();
+            }
+          }
+
+          if (map.isEmpty) {
+            return l10n.notAnsweredDash;
+          }
+
+          return map.entries.map((entry) {
+            final pair = question.matchingPairs.where(
+              (pair) => pair.id == entry.key,
+            );
+
+            final leftLabel =
+                pair.isNotEmpty ? pair.first.left : entry.key;
+
+            return '$leftLabel → ${entry.value}';
+          }).join('\n');
+        } catch (_) {
+          return answer.toString();
+        }
 
       default:
-        return answer.toString().trim().isEmpty
-            ? '-'
-            : answer.toString();
+        final text = answer.toString().trim();
+
+        return text.isEmpty ? l10n.notAnsweredDash : text;
     }
+  }
+
+  Map<String, dynamic>? _matchingAnswerMap(dynamic answer) {
+    try {
+      if (answer is Map) {
+        return Map<String, dynamic>.from(answer);
+      }
+
+      final decoded = jsonDecode(answer.toString());
+
+      if (decoded is Map) {
+        return Map<String, dynamic>.from(decoded);
+      }
+    } catch (_) {}
+
+    return null;
+  }
+
+  bool? _isCorrectAnswer(
+    QuestionModel question,
+    dynamic answer,
+  ) {
+    if (answer == null) {
+      return false;
+    }
+
+    switch (question.type) {
+      case QuestionType.multipleChoice:
+      case QuestionType.imageChoice:
+      case QuestionType.yesNo:
+        final selected = answer.toString().trim();
+
+        for (final option in question.options) {
+          if (option.id == selected ||
+              option.text.trim().toLowerCase() ==
+                  selected.toLowerCase()) {
+            return option.isCorrect;
+          }
+        }
+
+        return false;
+
+      case QuestionType.checkbox:
+        Set<String> selected;
+
+        if (answer is Set) {
+          selected = answer.map((e) => e.toString()).toSet();
+        } else if (answer is List) {
+          selected = answer.map((e) => e.toString()).toSet();
+        } else {
+          selected = {answer.toString()};
+        }
+
+        final correctIds = question.options
+            .where((option) => option.isCorrect)
+            .map((option) => option.id)
+            .toSet();
+
+        if (correctIds.isEmpty) {
+          return null;
+        }
+
+        return selected.length == correctIds.length &&
+            selected.every(correctIds.contains);
+
+      case QuestionType.matching:
+        final map = _matchingAnswerMap(answer);
+
+        if (map == null || question.matchingPairs.isEmpty) {
+          return false;
+        }
+
+        var correct = 0;
+
+        for (final pair in question.matchingPairs) {
+          final userAnswer = map[pair.id]?.toString().trim();
+
+          if (userAnswer != null &&
+              userAnswer.toLowerCase() ==
+                  pair.right.trim().toLowerCase()) {
+            correct++;
+          }
+        }
+
+        return correct == question.matchingPairs.length;
+
+      default:
+        return null;
+    }
+  }
+
+  String _scoreLabel(
+    double percentage,
+  ) {
+    if (percentage >= 90) return 'Sangat Baik';
+    if (percentage >= 75) return 'Bagus';
+    if (percentage >= 60) return 'Fair';
+    if (percentage >= 40) return 'Poor';
+    return 'Perlu Perbaikan';
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final l10n = AppLocalizations.of(context);
 
-    final primaryTextColor = isDark
-        ? AppTheme.darkTextPrimary
-        : AppTheme.textPrimary;
+    final primaryTextColor =
+        isDark ? AppTheme.darkTextPrimary : AppTheme.textPrimary;
 
-    // hasScore must ignore placeholder 0 essay entries
-    final effectiveEssay = _response.essayScores.entries
-        .where((e) => e.value != 0)
+    final secondaryTextColor =
+        isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
+
+    final manualTypes = {
+      QuestionType.longText,
+      QuestionType.shortText,
+      QuestionType.codeInput,
+      QuestionType.mathFormula,
+    };
+
+    double clientAutoScore = 0;
+
+    for (final question in _form.questions) {
+      if (manualTypes.contains(question.type)) {
+        continue;
+      }
+
+      final answer = _response.answers[question.id];
+
+      final correct = _isCorrectAnswer(
+        question,
+        answer,
+      );
+
+      final questionScore =
+          question.hasScore && question.score > 0
+              ? question.score
+              : 1.0;
+
+      if (correct == true) {
+        clientAutoScore += questionScore;
+      }
+    }
+
+    final autoScoreFromApi = _response.score;
+
+    final autoScoreFromAnswers =
+        _response.autoScores.values.fold<double>(
+      0,
+      (sum, value) => sum + value,
+    );
+
+    double effectiveAutoScore;
+
+    if (clientAutoScore > 0) {
+      effectiveAutoScore = clientAutoScore;
+    } else if (autoScoreFromAnswers > 0) {
+      effectiveAutoScore = autoScoreFromAnswers;
+    } else {
+      effectiveAutoScore = autoScoreFromApi;
+    }
+
+    final gradedEssay = _response.essayScores.entries
+        .where((entry) => entry.value > 0)
         .toList();
-    final hasScore =
-        _response.score > 0 || effectiveEssay.isNotEmpty;
 
-    // Visibility is dummy (no backend column) — always show score if available
-    final showScore = hasScore;
+    final essayScore = gradedEssay.fold<double>(
+      0,
+      (sum, entry) => sum + entry.value,
+    );
+
+    final displayScore = effectiveAutoScore + essayScore;
+
+    double maxScore = _form.maxScore;
+
+    if (maxScore <= 0) {
+      maxScore = _form.questions.isNotEmpty
+          ? _form.questions.length.toDouble()
+          : 1;
+    }
+
+    if (displayScore <= _form.questions.length &&
+        maxScore == 100 &&
+        _form.questions.length < 100 &&
+        _form.questions.isNotEmpty) {
+      final has100PointQuestion =
+          _form.questions.any((question) => question.score >= 100);
+
+      if (!has100PointQuestion) {
+        maxScore = _form.questions.length.toDouble();
+      }
+    }
+
+    final percentage = maxScore > 0
+        ? (displayScore / maxScore * 100).clamp(0.0, 100.0)
+        : 0.0;
+
+    final hasScore =
+        displayScore > 0 || _response.answers.isNotEmpty;
+
+    final hasUngradedEssay = _form.questions.any((question) {
+      if (!manualTypes.contains(question.type)) {
+        return false;
+      }
+
+      final answer = _response.answers[question.id];
+
+      final hasAnswer =
+          answer != null && answer.toString().trim().isNotEmpty;
+
+      final grade = _response.essayScores[question.id] ?? 0;
+
+      return hasAnswer && grade == 0;
+    });
 
     return Scaffold(
-      backgroundColor: isDark ? AppTheme.darkBg : AppTheme.surfaceLight,
+      backgroundColor:
+          isDark ? AppTheme.darkBg : AppTheme.surfaceLight,
       appBar: AppBar(
-        title: Text(l10n.historyDetailTitle),
+        title: Text(
+          l10n.historyAnswer,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppTheme.primary, AppTheme.primaryLight],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+      body: (_loadingQuestions && _form.questions.isEmpty)
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(
+                20,
+                16,
+                20,
+                40,
               ),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  _form.title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    height: 1.3,
+                _SummaryCard(
+                  form: _form,
+                  response: _response,
+                  hasScore: hasScore,
+                  hasUngradedEssay: hasUngradedEssay,
+                  displayScore: displayScore,
+                  maxScore: maxScore,
+                  percentage: percentage,
+                  scoreLabel: _scoreLabel(
+                    percentage,
                   ),
+                  isDark: isDark,
+                  l10n: l10n,
                 ),
-                const SizedBox(height: 12),
-                _HeaderRow(
-                  icon: Icons.person_outline_rounded,
-                  label: l10n.respondent,
-                  value: _response.respondentName,
-                ),
-                const SizedBox(height: 8),
-                _HeaderRow(
-                  icon: Icons.email_outlined,
-                  label: 'Email',
-                  value: _response.respondentEmail,
-                ),
-                const SizedBox(height: 8),
-                _HeaderRow(
-                  icon: Icons.calendar_today_outlined,
-                  label: l10n.submittedAt,
-                  value: _formatDateTime(_response.submittedAt),
-                ),
-                const SizedBox(height: 8),
-                _HeaderRow(
-                  icon: Icons.timer_outlined,
-                  label: l10n.duration,
-                  value: _response.durationText,
-                ),
-                if (showScore && hasScore) ...[
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.emoji_events_outlined,
-                        size: 18,
-                        color: Colors.white,
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(
+                          alpha: 0.09,
+                        ),
+                        borderRadius: BorderRadius.circular(11),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${l10n.score}: ${_response.percentage.round()}%',
-                        style: const TextStyle(
-                          fontSize: 20,
+                      child: const Icon(
+                        Icons.fact_check_outlined,
+                        size: 20,
+                        color: AppTheme.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        l10n.yourAnswers,
+                        style: TextStyle(
+                          fontSize: 17,
                           fontWeight: FontWeight.w800,
-                          color: Colors.white,
+                          color: primaryTextColor,
                         ),
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                    if (_form.questions.isNotEmpty)
+                      Text(
+                        '${_form.questions.length} soal',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: secondaryTextColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                ..._form.questions.asMap().entries.map((entry) {
+                  final question = entry.value;
+                  final answer = _response.answers[question.id];
+                  final essayGrade =
+                      _response.essayScores[question.id];
+
+                  final isCorrect = manualTypes.contains(
+                    question.type,
+                  )
+                      ? null
+                      : _isCorrectAnswer(
+                          question,
+                          answer,
+                        );
+
+                  final questionMaxScore =
+                      question.hasScore && question.score > 0
+                          ? question.score
+                          : null;
+
+                  final earnedScore =
+                      isCorrect == true
+                          ? (questionMaxScore ?? 1).toDouble()
+                          : 0.0;
+
+                  return _AnswerCard(
+                    number: entry.key + 1,
+                    question: question,
+                    answerText: _answerText(
+                      question,
+                      answer,
+                      l10n,
+                    ),
+                    grade: essayGrade != null &&
+                            essayGrade != 0
+                        ? essayGrade
+                        : null,
+                    qMaxScore: questionMaxScore,
+                    isCorrect: isCorrect,
+                    earnedScore: earnedScore,
+                    isDark: isDark,
+                  );
+                }),
               ],
             ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            l10n.yourAnswers,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: primaryTextColor,
-            ),
-          ),
-          const SizedBox(height: 12),
-          if (_loadingQuestions && _form.questions.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(
-                child: CircularProgressIndicator(),
-              ),
-            )
-          else
-            ..._form.questions.asMap().entries.map(
-              (entry) {
-                final index = entry.key;
-                final q = entry.value;
-                final answer = _response.answers[q.id];
+    );
+  }
+}
 
-                return _AnswerCard(
-                  number: index + 1,
-                  question: q,
-                  answerText: _answerText(q, answer),
-                  grade: _response.essayScores[q.id],
-                  isDark: isDark,
-                );
-              },
+class _SummaryCard extends StatelessWidget {
+  final FormModel form;
+  final ResponseModel response;
+  final bool hasScore;
+  final bool hasUngradedEssay;
+  final double displayScore;
+  final double maxScore;
+  final double percentage;
+  final String scoreLabel;
+  final bool isDark;
+  final AppLocalizations l10n;
+
+  const _SummaryCard({
+    required this.form,
+    required this.response,
+    required this.hasScore,
+    required this.hasUngradedEssay,
+    required this.displayScore,
+    required this.maxScore,
+    required this.percentage,
+    required this.scoreLabel,
+    required this.isDark,
+    required this.l10n,
+  });
+
+  String _formatDateTime(DateTime dt) {
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+
+    return '${dt.day}/${dt.month}/${dt.year}  $h:$m';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            AppTheme.primary,
+            AppTheme.primaryLight,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primary.withValues(alpha: 0.18),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            form.title,
+            style: const TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+              height: 1.3,
             ),
+          ),
+          const SizedBox(height: 16),
+          _HeaderRow(
+            icon: Icons.person_outline_rounded,
+            label: l10n.participant,
+            value: response.respondentName,
+          ),
+          const SizedBox(height: 9),
+          _HeaderRow(
+            icon: Icons.email_outlined,
+            label: l10n.email,
+            value: response.respondentEmail,
+          ),
+          const SizedBox(height: 9),
+          _HeaderRow(
+            icon: Icons.calendar_today_outlined,
+            label: l10n.historySubmitted,
+            value: _formatDateTime(response.submittedAt),
+          ),
+          const SizedBox(height: 9),
+          _HeaderRow(
+            icon: Icons.timer_outlined,
+            label: l10n.duration,
+            value: response.durationText,
+          ),
+          if (hasScore) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(13),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          maxScore > 0
+                              ? l10n.nilaiMax(
+                                  displayScore.round(),
+                                  maxScore.round(),
+                                )
+                              : l10n.nilaiOnly(
+                                  displayScore.round(),
+                                ),
+                          style: const TextStyle(
+                            fontSize: 21,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                        if (maxScore > 0) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            '${percentage.round()}% — $scoreLabel',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white
+                                  .withValues(alpha: 0.82),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                        if (hasUngradedEssay)
+                          Padding(
+                            padding:
+                                const EdgeInsets.only(top: 6),
+                            child: Text(
+                              'Ada essay yang belum dinilai',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.white
+                                    .withValues(alpha: 0.72),
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (maxScore > 0)
+                    SizedBox(
+                      width: 56,
+                      height: 56,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            value: percentage / 100,
+                            backgroundColor:
+                                Colors.white.withValues(
+                              alpha: 0.18,
+                            ),
+                            valueColor:
+                                const AlwaysStoppedAnimation<
+                                    Color>(
+                              Colors.white,
+                            ),
+                            strokeWidth: 5,
+                          ),
+                          Text(
+                            '${percentage.round()}%',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ] else if (hasUngradedEssay) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.hourglass_empty_rounded,
+                    size: 18,
+                    color: Colors.white70,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Menunggu penilaian',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -287,21 +841,25 @@ class _HeaderRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 16, color: Colors.white70),
+        Icon(
+          icon,
+          size: 16,
+          color: Colors.white70,
+        ),
         const SizedBox(width: 8),
         Text(
           '$label: ',
           style: const TextStyle(
-            fontSize: 13,
+            fontSize: 12,
             color: Colors.white70,
             fontWeight: FontWeight.w500,
           ),
         ),
         Expanded(
           child: Text(
-            value,
+            value.isEmpty ? '-' : value,
             style: const TextStyle(
-              fontSize: 13,
+              fontSize: 12,
               color: Colors.white,
               fontWeight: FontWeight.w600,
             ),
@@ -317,6 +875,9 @@ class _AnswerCard extends StatelessWidget {
   final QuestionModel question;
   final String answerText;
   final double? grade;
+  final double? qMaxScore;
+  final bool? isCorrect;
+  final double? earnedScore;
   final bool isDark;
 
   const _AnswerCard({
@@ -324,28 +885,36 @@ class _AnswerCard extends StatelessWidget {
     required this.question,
     required this.answerText,
     this.grade,
+    this.qMaxScore,
+    this.isCorrect,
+    this.earnedScore,
     required this.isDark,
   });
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final primaryTextColor = isDark
-        ? AppTheme.darkTextPrimary
-        : AppTheme.textPrimary;
+    final primaryText =
+        isDark ? AppTheme.darkTextPrimary : AppTheme.textPrimary;
 
-    final secondaryTextColor = isDark
-        ? AppTheme.darkTextSecondary
-        : AppTheme.textSecondary;
+    final secondaryText =
+        isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
+
+    final cardColor =
+        isDark ? AppTheme.darkCard : AppTheme.surfaceCard;
+
+    final borderColor =
+        isDark ? AppTheme.darkBorder : AppTheme.border;
+
+    final l10n = AppLocalizations.of(context);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkCard : AppTheme.surfaceCard,
-        borderRadius: BorderRadius.circular(16),
+        color: cardColor,
+        borderRadius: BorderRadius.circular(17),
         border: Border.all(
-          color: isDark ? AppTheme.darkBorder : AppTheme.border,
+          color: borderColor,
         ),
       ),
       child: Column(
@@ -355,35 +924,32 @@ class _AnswerCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 26,
-                height: 26,
+                width: 30,
+                height: 30,
                 decoration: BoxDecoration(
-                  color: AppTheme.primary.withValues(
-                    alpha: 0.10,
-                  ),
-                  borderRadius: BorderRadius.circular(8),
+                  color: AppTheme.primary.withValues(alpha: 0.09),
+                  borderRadius: BorderRadius.circular(9),
                 ),
-                child: Center(
-                  child: Text(
-                    '$number',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.primary,
-                    ),
+                alignment: Alignment.center,
+                child: Text(
+                  '$number',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.primary,
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 11),
               Expanded(
                 child: RichTextContentView(
-                  content: question.content,
+                  content: null,
                   fallbackText: question.text,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: primaryTextColor,
-                    height: 1.3,
+                    color: primaryText,
+                    height: 1.35,
                   ),
                 ),
               ),
@@ -400,26 +966,34 @@ class _AnswerCard extends StatelessWidget {
           if (question.type == QuestionType.codeInput &&
               question.codeSnippet != null) ...[
             const SizedBox(height: 12),
-            CodeBlockWidget(code: question.codeSnippet!),
+            CodeBlockWidget(
+              code: question.codeSnippet!,
+            ),
           ],
-          const SizedBox(height: 12),
+          if (question.audioUrl != null) ...[
+            const SizedBox(height: 12),
+            AudioPlayerWidget(
+              audioSource: question.audioUrl!,
+            ),
+          ],
+          const SizedBox(height: 14),
           Text(
             l10n.answerLabel,
             style: TextStyle(
               fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: secondaryTextColor,
+              fontWeight: FontWeight.w700,
+              color: secondaryText,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppTheme.success.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(10),
+              color: AppTheme.success.withValues(alpha: 0.055),
+              borderRadius: BorderRadius.circular(11),
               border: Border.all(
-                color: AppTheme.success.withValues(alpha: 0.20),
+                color: AppTheme.success.withValues(alpha: 0.18),
               ),
             ),
             child: Text(
@@ -427,41 +1001,99 @@ class _AnswerCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: primaryTextColor,
-                height: 1.4,
+                color: primaryText,
+                height: 1.45,
               ),
             ),
           ),
-          if (grade != null && grade != 0) ...[
+          if (grade != null) ...[
             const SizedBox(height: 10),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1B9E5E).withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.check_circle_rounded,
-                    size: 14,
-                    color: Color(0xFF1B9E5E),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '${l10n.gradedLabel}: ${grade! % 1 == 0 ? grade!.round() : grade!}/100',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF1B9E5E),
-                    ),
-                  ),
-                ],
-              ),
+            _ResultBadge(
+              icon: Icons.check_circle_rounded,
+              color: AppTheme.success,
+              text: qMaxScore != null && qMaxScore! > 0
+                  ? l10n.nilaiMax(
+                      grade! % 1 == 0
+                          ? grade!.toInt()
+                          : grade!,
+                      qMaxScore!.toInt(),
+                    )
+                  : 'Nilai: ${grade! % 1 == 0 ? grade!.toInt() : grade!}/100',
+            ),
+          ] else if (isCorrect != null) ...[
+            const SizedBox(height: 10),
+            _ResultBadge(
+              icon: isCorrect == true
+                  ? Icons.check_circle_rounded
+                  : Icons.cancel_rounded,
+              color: isCorrect == true
+                  ? AppTheme.success
+                  : AppTheme.error,
+              text: isCorrect == true
+                  ? 'Benar (+${_formatScore(
+                      earnedScore ?? qMaxScore ?? 1,
+                    )} poin)'
+                  : 'Salah (0 poin)',
+            ),
+          ] else if (qMaxScore != null && qMaxScore! > 0) ...[
+            const SizedBox(height: 10),
+            _ResultBadge(
+              icon: Icons.stars_rounded,
+              color: AppTheme.info,
+              text: 'Poin soal: ${qMaxScore!.toInt()}',
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  String _formatScore(double value) {
+    return value % 1 == 0
+        ? value.toInt().toString()
+        : value.toStringAsFixed(1);
+  }
+}
+
+class _ResultBadge extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String text;
+
+  const _ResultBadge({
+    required this.icon,
+    required this.color,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 7,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.09),
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 14,
+            color: color,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
         ],
       ),
     );

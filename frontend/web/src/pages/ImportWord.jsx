@@ -21,7 +21,6 @@ import {
   FaCode,
   FaCog,
   FaCopy,
-  FaExclamationTriangle,
   FaEye,
   FaEyeSlash,
   FaFileAlt,
@@ -48,15 +47,1757 @@ import {
 import {
   ThemeContext,
 } from "../context/ThemeContext";
-import {
-  createForm,
-  importFormFromDocx,
-  updateForm,
-} from "../api/formApi";
-import {
-  addQuestion,
-} from "../api/questionApi";
-import "../assets/css/ImportWord.css";
+
+const importWordStyles = `
+/* === ImportWord.css === */
+/* =========================================================
+   IMPORT WORD PAGE
+========================================================= */
+.import-word-page {
+  min-height: 100vh;
+  background: linear-gradient( 180deg, #f7f9fc 0%, #f4f7fb 100% );
+  color: #1f2a44;
+  font-family: "Poppins", sans-serif;
+  padding-bottom: 70px;
+}
+.import-word-page * {
+  box-sizing: border-box;
+}
+/* =========================================================
+   DARK MODE
+========================================================= */
+.import-word-page.dark {
+  background: linear-gradient( 180deg, #111827 0%, #0f172a 100% );
+  color: #e5e7eb;
+}
+/* =========================================================
+   HEADER
+========================================================= */
+.import-word-header {
+  min-height: 94px;
+  padding: 22px clamp(22px, 5vw, 72px);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba( 255, 255, 255, 0.94 );
+  border-bottom: 1px solid #e8edf4;
+  backdrop-filter: blur(20px);
+}
+.import-word-page.dark
+.import-word-header {
+  background: rgba( 17, 24, 39, 0.94 );
+  border-bottom-color: #273449;
+}
+/* =========================================================
+   BACK BUTTON
+========================================================= */
+.import-back-btn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 14px;
+  background: #eef4ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 19px;
+  transition: 0.2s ease;
+}
+.import-back-btn:hover {
+  transform: translateX( -2px );
+  background: #e0ebff;
+}
+.import-word-page.dark
+.import-back-btn {
+  background: #1e293b;
+  color: #7da8ff;
+}
+/* =========================================================
+   HEADER TITLE
+========================================================= */
+.import-header-title {
+  min-width: 0;
+}
+.import-header-title > span {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #718096;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.import-header-title h1 {
+  margin: 0;
+  font-size: clamp( 22px, 2vw, 28px );
+  line-height: 1.15;
+  color: #183153;
+  font-weight: 800;
+}
+.import-word-page.dark
+.import-header-title h1 {
+  color: #f8fafc;
+}
+.import-word-page.dark
+.import-header-title > span {
+  color: #94a3b8;
+}
+/* =========================================================
+   HEADER ACTIONS
+========================================================= */
+.import-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.import-previous-btn,
+.import-save-btn {
+  min-height: 44px;
+  border: none;
+  border-radius: 13px;
+  padding: 0 20px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.import-previous-btn {
+  background: #f1f4f9;
+  color: #45536c;
+}
+.import-previous-btn:hover {
+  background: #e7ecf3;
+}
+.import-save-btn {
+  background: linear-gradient( 135deg, #2563eb, #397cf6 );
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba( 37, 99, 235, 0.22 );
+}
+.import-save-btn:hover:not(:disabled) {
+  transform: translateY( -1px );
+  box-shadow: 0 14px 30px rgba( 37, 99, 235, 0.3 );
+}
+.import-save-btn:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.import-word-page.dark
+.import-previous-btn {
+  background: #1f2937;
+  color: #d6deea;
+}
+/* =========================================================
+   TABS
+========================================================= */
+.import-tabs {
+  width: min( 1180px, calc( 100% - 40px ) );
+  margin: 24px auto 0;
+  display: grid;
+  grid-template-columns: repeat( 4, 1fr );
+  background: #ffffff;
+  padding: 8px;
+  border: 1px solid #e6ebf2;
+  border-radius: 20px;
+  box-shadow: 0 10px 35px rgba( 34, 58, 86, 0.06 );
+  gap: 6px;
+}
+.import-tab {
+  min-height: 58px;
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+  color: #748197;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  transition: 0.2s ease;
+}
+.import-tab svg {
+  font-size: 17px;
+}
+.import-tab:hover {
+  background: #f6f9fe;
+  color: #315a9f;
+}
+.import-tab.active {
+  background: linear-gradient( 135deg, #edf4ff, #f4f8ff );
+  color: #2563eb;
+  box-shadow: inset 0 0 0 1px #d5e4ff;
+}
+.import-tab-number {
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #eef1f5;
+  color: #7f8ba0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 800;
+}
+.import-tab.active
+.import-tab-number {
+  background: #2563eb;
+  color: #ffffff;
+}
+.import-word-page.dark
+.import-tabs {
+  background: #151f2f;
+  border-color: #273449;
+}
+.import-word-page.dark
+.import-tab {
+  color: #9ca9bc;
+}
+.import-word-page.dark
+.import-tab:hover {
+  background: #1a283a;
+  color: #bfd2ff;
+}
+.import-word-page.dark
+.import-tab.active {
+  background: #1d2d44;
+  color: #83aaff;
+  box-shadow: inset 0 0 0 1px #31517c;
+}
+.import-word-page.dark
+.import-tab-number {
+  background: #283447;
+  color: #adbacb;
+}
+/* =========================================================
+   STATUS BAR
+========================================================= */
+.import-status-bar {
+  width: min( 1180px, calc( 100% - 40px ) );
+  margin: 14px auto 0;
+  padding: 13px 18px;
+  border-radius: 15px;
+  background: #edf5ff;
+  color: #30568e;
+  border: 1px solid #d9e9ff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  font-size: 15px;
+}
+.import-status-bar > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.import-status-bar > div:first-child span {
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.import-status-bar > div:last-child {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.import-status-bar strong {
+  color: #1d4ed8;
+  margin-left: 7px;
+}
+.import-word-page.dark
+.import-status-bar {
+  background: #17273d;
+  color: #a9c6ef;
+  border-color: #294564;
+}
+.import-word-page.dark
+.import-status-bar strong {
+  color: #8bb4ff;
+}
+/* =========================================================
+   MAIN CONTENT
+========================================================= */
+.import-word-content,
+.import-settings-page {
+  width: min( 1180px, calc( 100% - 40px ) );
+  margin: 24px auto 0;
+}
+.import-word-content {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.import-settings-page {
+  display: grid;
+  grid-template-columns: repeat( 2, minmax( 0, 1fr ) );
+  gap: 22px;
+  align-items: start;
+}
+/* =========================================================
+   SECTION CARD
+========================================================= */
+.import-word-section {
+  background: #ffffff;
+  border: 1px solid #e7ebf1;
+  border-radius: 24px;
+  padding: clamp( 22px, 3vw, 32px );
+  box-shadow: 0 14px 45px rgba( 34, 58, 86, 0.06 );
+}
+.import-word-page.dark
+.import-word-section {
+  background: #151f2f;
+  border-color: #273449;
+  box-shadow: 0 18px 45px rgba( 0, 0, 0, 0.15 );
+}
+/* =========================================================
+   SECTION HEADING
+========================================================= */
+.import-section-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  margin-bottom: 26px;
+}
+.import-section-icon {
+  width: 46px;
+  height: 46px;
+  min-width: 46px;
+  border-radius: 15px;
+  background: linear-gradient( 135deg, #e9f2ff, #f2f6ff );
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 21px;
+}
+.import-section-heading > div:last-child {
+  min-width: 0;
+}
+.import-section-heading span {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #758399;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.import-section-heading h2 {
+  margin: 0;
+  color: #21334f;
+  font-size: 22px;
+  line-height: 1.25;
+  font-weight: 800;
+}
+.import-section-heading p {
+  margin: 7px 0 0;
+  font-size: 15px;
+  line-height: 1.65;
+  color: #758197;
+}
+.import-word-page.dark
+.import-section-icon {
+  background: #1f3655;
+  color: #83adff;
+}
+.import-word-page.dark
+.import-section-heading h2 {
+  color: #f1f5f9;
+}
+.import-word-page.dark
+.import-section-heading span,
+.import-word-page.dark
+.import-section-heading p {
+  color: #93a4b9;
+}
+/* =========================================================
+   UPLOAD DROP ZONE
+========================================================= */
+.import-drop-zone {
+  min-height: 330px;
+  border: 2px dashed #c7d9f2;
+  border-radius: 24px;
+  padding: 42px 24px;
+  background: linear-gradient( 180deg, #fbfdff, #f5f9ff );
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  transition: 0.25s ease;
+}
+.import-drop-zone:hover {
+  border-color: #7aa8ee;
+  background: #f0f6ff;
+  transform: translateY( -1px );
+}
+.import-drop-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 24px;
+  background: linear-gradient( 135deg, #e3efff, #eef5ff );
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 38px;
+  margin-bottom: 18px;
+  box-shadow: 0 14px 28px rgba( 37, 99, 235, 0.1 );
+}
+.import-drop-zone h3 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  color: #233753;
+}
+.import-drop-zone p {
+  margin: 0 0 19px;
+  color: #78869a;
+  font-size: 16px;
+  max-width: 520px;
+  line-height: 1.6;
+}
+.import-drop-zone button {
+  min-height: 45px;
+  padding: 0 21px;
+  border: none;
+  border-radius: 13px;
+  background: #2563eb;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 9px 22px rgba( 37, 99, 235, 0.24 );
+}
+.import-drop-zone small {
+  margin-top: 15px;
+  color: #99a3b3;
+  font-size: 13px;
+  font-weight: 600;
+}
+.import-word-page.dark
+.import-drop-zone {
+  background: #111b29;
+  border-color: #34506f;
+}
+.import-word-page.dark
+.import-drop-zone:hover {
+  background: #152238;
+  border-color: #5583bd;
+}
+.import-word-page.dark
+.import-drop-zone h3 {
+  color: #f2f6fb;
+}
+.import-word-page.dark
+.import-drop-zone p,
+.import-word-page.dark
+.import-drop-zone small {
+  color: #93a4b9;
+}
+/* =========================================================
+   SELECTED FILE
+========================================================= */
+.import-selected-file {
+  display: grid;
+  grid-template-columns: auto minmax( 0, 1fr ) auto auto;
+  align-items: center;
+  gap: 18px;
+  padding: 20px;
+  border: 1px solid #dfe8f5;
+  background: #f8fbff;
+  border-radius: 18px;
+}
+.import-selected-file-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 17px;
+  background: #e8f2ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 27px;
+}
+.import-selected-file-info {
+  min-width: 0;
+}
+.import-selected-file-info span,
+.import-selected-file-info small {
+  display: block;
+}
+.import-selected-file-info span {
+  color: #8290a5;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+.import-selected-file-info strong {
+  display: block;
+  color: #263851;
+  font-size: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.import-selected-file-info small {
+  margin-top: 3px;
+  color: #9aa5b4;
+  font-size: 13px;
+}
+.import-selected-file-result {
+  padding: 10px 15px;
+  border-radius: 13px;
+  background: #eaf8ef;
+  color: #278455;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  font-size: 13px;
+}
+.import-selected-file-result svg {
+  margin-bottom: 2px;
+}
+.import-selected-file-result strong {
+  font-size: 15px;
+}
+.import-remove-file {
+  width: 39px;
+  height: 39px;
+  border: none;
+  border-radius: 12px;
+  color: #e04a4a;
+  background: #fff0f0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.import-remove-file:hover {
+  background: #ffe1e1;
+}
+.import-word-page.dark
+.import-selected-file {
+  background: #111c2a;
+  border-color: #2b3d53;
+}
+.import-word-page.dark
+.import-selected-file-info strong {
+  color: #ecf2f9;
+}
+.import-word-page.dark
+.import-selected-file-info span,
+.import-word-page.dark
+.import-selected-file-info small {
+  color: #98a9bd;
+}
+.import-word-page.dark
+.import-selected-file-result {
+  background: #153729;
+  color: #85d6aa;
+}
+.import-word-page.dark
+.import-remove-file {
+  background: #3c2027;
+  color: #ff9090;
+}
+/* =========================================================
+   PROCESSING + MESSAGE
+========================================================= */
+.import-processing,
+.import-message {
+  margin-top: 17px;
+  border-radius: 15px;
+  padding: 14px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.import-processing {
+  background: #f1f6ff;
+  color: #41628f;
+}
+.import-processing strong,
+.import-processing p {
+  display: block;
+}
+.import-processing p {
+  margin: 3px 0 0;
+  font-size: 14px;
+}
+.import-spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 3px solid rgba( 37, 99, 235, 0.2 );
+  border-top-color: #2563eb;
+  animation: importSpinner 0.85s linear infinite;
+}
+@keyframes importSpinner {
+  to {
+    transform: rotate( 360deg );
+  }
+}
+.import-message {
+  font-size: 15px;
+  font-weight: 600;
+}
+.import-message.success {
+  background: #eaf8ef;
+  color: #247b50;
+}
+.import-message.error {
+  background: #fff0f0;
+  color: #c94646;
+}
+.import-word-page.dark
+.import-processing {
+  background: #17263b;
+  color: #a8c1e2;
+}
+.import-word-page.dark
+.import-message.success {
+  background: #153629;
+  color: #91d9b2;
+}
+.import-word-page.dark
+.import-message.error {
+  background: #3e2229;
+  color: #ff9d9d;
+}
+/* =========================================================
+   TEMPLATE GUIDE
+========================================================= */
+.template-guide {
+  overflow: hidden;
+}
+.import-template-example {
+  border-radius: 18px;
+  overflow: auto;
+  background: #132238;
+  border: 1px solid #1e3556;
+}
+.import-template-example pre {
+  margin: 0;
+  padding: 22px;
+  color: #d9e9ff;
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 14px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.import-template-note {
+  margin: 15px 0 0;
+  color: #748197;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.import-word-page.dark
+.import-template-note {
+  color: #93a4b9;
+}
+/* =========================================================
+   INPUT FIELD
+========================================================= */
+.import-field {
+  margin-bottom: 20px;
+}
+.import-field:last-child {
+  margin-bottom: 0;
+}
+.import-field label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #536178;
+  font-weight: 700;
+}
+.import-field > small {
+  display: block;
+  margin-top: 7px;
+  font-size: 13px;
+  color: #8d98aa;
+}
+.import-input-wrapper {
+  min-height: 49px;
+  border: 1px solid #dce3ed;
+  border-radius: 14px;
+  background: #fbfcfe;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.import-input-wrapper:focus-within {
+  border-color: #84aef2;
+  box-shadow: 0 0 0 4px rgba( 37, 99, 235, 0.08 );
+}
+.import-input-wrapper > svg {
+  margin-left: 15px;
+  min-width: 17px;
+  color: #8695aa;
+}
+.import-input-wrapper input {
+  flex: 1;
+  min-width: 0;
+  height: 47px;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0 14px;
+  color: #253550;
+  font-family: inherit;
+  font-size: 15px;
+}
+.import-field textarea,
+.import-field select,
+.import-field > input {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #dce3ed;
+  border-radius: 14px;
+  background: #fbfcfe;
+  padding: 12px 14px;
+  outline: none;
+  color: #253550;
+  font-family: inherit;
+  font-size: 15px;
+  transition: 0.2s ease;
+}
+.import-field textarea {
+  resize: vertical;
+  line-height: 1.65;
+}
+.import-field textarea:focus,
+.import-field select:focus,
+.import-field > input:focus {
+  border-color: #84aef2;
+  box-shadow: 0 0 0 4px rgba( 37, 99, 235, 0.08 );
+}
+.import-random-link-btn {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border: none;
+  border-left: 1px solid #e2e8f0;
+  background: #f3f7fd;
+  color: #2563eb;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.import-random-link-btn:hover {
+  background: #eaf2ff;
+}
+.import-word-page.dark
+.import-field label {
+  color: #b4c0cf;
+}
+.import-word-page.dark
+.import-field > small {
+  color: #8192a7;
+}
+.import-word-page.dark
+.import-input-wrapper,
+.import-word-page.dark
+.import-field textarea,
+.import-word-page.dark
+.import-field select,
+.import-word-page.dark
+.import-field > input {
+  background: #111b29;
+  border-color: #304056;
+  color: #ecf2f8;
+}
+.import-word-page.dark
+.import-input-wrapper input {
+  color: #ecf2f8;
+}
+.import-word-page.dark
+.import-input-wrapper > svg {
+  color: #8fa5c0;
+}
+.import-word-page.dark
+.import-random-link-btn {
+  background: #1c2b40;
+  border-left-color: #304056;
+  color: #87adff;
+}
+/* =========================================================
+   SCHEDULE GRID
+========================================================= */
+.import-schedule-grid {
+  display: grid;
+  grid-template-columns: repeat( 2, minmax( 0, 1fr ) );
+  gap: 3px 18px;
+}
+/* =========================================================
+   SETTINGS TOGGLE
+========================================================= */
+.import-setting-option {
+  display: grid;
+  grid-template-columns: auto minmax( 0, 1fr ) auto auto;
+  align-items: center;
+  gap: 14px;
+  min-height: 82px;
+  padding: 15px 16px;
+  border: 1px solid #e4e9f1;
+  border-radius: 17px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  background: #fbfcfe;
+  transition: 0.2s ease;
+}
+.import-setting-option:hover {
+  border-color: #c7d8f0;
+  background: #f7faff;
+}
+.import-setting-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background: #eaf2ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+.import-setting-content {
+  min-width: 0;
+}
+.import-setting-content strong,
+.import-setting-content span {
+  display: block;
+}
+.import-setting-content strong {
+  color: #2b3a52;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+.import-setting-content span {
+  color: #8490a2;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.import-setting-option > input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.import-toggle {
+  width: 45px;
+  height: 25px;
+  border-radius: 999px;
+  background: #ced5de;
+  padding: 3px;
+  display: inline-flex;
+  align-items: center;
+  transition: 0.2s ease;
+}
+.import-toggle span {
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 5px rgba( 0, 0, 0, 0.15 );
+  transition: 0.2s ease;
+}
+.import-setting-option
+> input:checked
++ .import-toggle {
+  background: #2563eb;
+}
+.import-setting-option
+> input:checked
++ .import-toggle
+span {
+  transform: translateX( 20px );
+}
+.import-word-page.dark
+.import-setting-option {
+  background: #111b29;
+  border-color: #2e3f56;
+}
+.import-word-page.dark
+.import-setting-option:hover {
+  background: #172438;
+}
+.import-word-page.dark
+.import-setting-content strong {
+  color: #edf3fa;
+}
+.import-word-page.dark
+.import-setting-content span {
+  color: #95a6ba;
+}
+.import-word-page.dark
+.import-setting-icon {
+  background: #1d3350;
+  color: #87aeff;
+}
+/* =========================================================
+   TIMER CARD
+========================================================= */
+.import-timer-card {
+  min-height: 77px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 15px 17px;
+  border: 1px solid #e5eaf1;
+  border-radius: 17px;
+  margin-top: 12px;
+  background: #f9fbfe;
+}
+.import-timer-card > div:first-child {
+  min-width: 0;
+}
+.import-timer-card strong,
+.import-timer-card span {
+  display: block;
+}
+.import-timer-card strong {
+  color: #2b3c55;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+.import-timer-card > div:first-child > span {
+  color: #8692a4;
+  font-size: 13px;
+}
+.import-timer-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.import-timer-input input {
+  width: 85px;
+  height: 42px;
+  border: 1px solid #d7dfe9;
+  border-radius: 12px;
+  padding: 0 10px;
+  font-family: inherit;
+  outline: none;
+}
+.import-timer-input span {
+  color: #768297;
+  font-size: 13px;
+}
+.import-timer-card > select {
+  min-width: 115px;
+  height: 42px;
+  border: 1px solid #d7dfe9;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 0 11px;
+  font-family: inherit;
+  color: #394a64;
+  outline: none;
+}
+.import-word-page.dark
+.import-timer-card {
+  background: #111b29;
+  border-color: #2f4057;
+}
+.import-word-page.dark
+.import-timer-card strong {
+  color: #edf3fa;
+}
+.import-word-page.dark
+.import-timer-card > div:first-child > span,
+.import-word-page.dark
+.import-timer-input span {
+  color: #93a4b9;
+}
+.import-word-page.dark
+.import-timer-input input,
+.import-word-page.dark
+.import-timer-card > select {
+  background: #162233;
+  border-color: #33465f;
+  color: #e6edf7;
+}
+/* =========================================================
+   CHOICE CARD
+========================================================= */
+.import-radio-grid {
+  display: grid;
+  grid-template-columns: repeat( 2, minmax( 0, 1fr ) );
+  gap: 14px;
+}
+.import-choice-card {
+  position: relative;
+  min-height: 145px;
+  border: 1px solid #e0e7f0;
+  border-radius: 19px;
+  padding: 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: #fbfcfe;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+.import-choice-card:hover {
+  border-color: #c6d8f3;
+  transform: translateY( -1px );
+}
+.import-choice-card.selected {
+  border-color: #75a7f1;
+  background: #f0f6ff;
+  box-shadow: 0 0 0 3px rgba( 37, 99, 235, 0.06 );
+}
+.import-choice-card > svg {
+  min-width: 37px;
+  min-height: 37px;
+  padding: 9px;
+  border-radius: 12px;
+  background: #e9f2ff;
+  color: #2563eb;
+}
+.import-choice-card strong,
+.import-choice-card span {
+  display: block;
+}
+.import-choice-card strong {
+  color: #293a52;
+  font-size: 15px;
+  margin-bottom: 6px;
+}
+.import-choice-card span {
+  color: #7f8b9e;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.import-choice-card input {
+  position: absolute;
+  right: 15px;
+  top: 15px;
+  accent-color: #2563eb;
+}
+.import-word-page.dark
+.import-choice-card {
+  background: #111b29;
+  border-color: #304056;
+}
+.import-word-page.dark
+.import-choice-card.selected {
+  background: #172941;
+  border-color: #4678bf;
+}
+.import-word-page.dark
+.import-choice-card strong {
+  color: #edf3fa;
+}
+.import-word-page.dark
+.import-choice-card span {
+  color: #95a6ba;
+}
+/* =========================================================
+   RESULT OPTIONS
+========================================================= */
+.import-result-options {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.import-result-option {
+  position: relative;
+  min-height: 77px;
+  padding: 14px 16px;
+  border: 1px solid #e1e7ef;
+  border-radius: 17px;
+  display: grid;
+  grid-template-columns: auto minmax( 0, 1fr ) auto;
+  align-items: center;
+  gap: 13px;
+  background: #fbfcfe;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+.import-result-option:hover {
+  border-color: #c9d9f0;
+}
+.import-result-option.selected {
+  border-color: #7caaf0;
+  background: #f1f6ff;
+}
+.import-result-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background: #eaf2ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.import-result-option strong,
+.import-result-option span {
+  display: block;
+}
+.import-result-option strong {
+  color: #2b3b52;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+.import-result-option span {
+  color: #8490a2;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.import-result-option input {
+  accent-color: #2563eb;
+}
+.import-word-page.dark
+.import-result-option {
+  background: #111b29;
+  border-color: #304056;
+}
+.import-word-page.dark
+.import-result-option.selected {
+  background: #172941;
+  border-color: #497bc1;
+}
+.import-word-page.dark
+.import-result-option strong {
+  color: #edf3fa;
+}
+.import-word-page.dark
+.import-result-option span {
+  color: #95a6ba;
+}
+/* =========================================================
+   QUESTION SUMMARY
+========================================================= */
+.import-question-summary {
+  min-height: 128px;
+  border-radius: 23px;
+  padding: 26px 30px;
+  background: linear-gradient( 135deg, #1f5ec8, #3279ee );
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 25px;
+  overflow: hidden;
+  position: relative;
+}
+.import-question-summary > div:first-child {
+  min-width: 0;
+}
+.import-question-summary > div:first-child > span {
+  display: block;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 800;
+  opacity: 0.82;
+}
+.import-question-summary h2 {
+  margin: 5px 0 5px;
+  font-size: 25px;
+  line-height: 1.25;
+}
+.import-question-summary p {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.88;
+}
+.import-question-total {
+  min-width: 105px;
+  min-height: 82px;
+  border-radius: 18px;
+  background: rgba( 255, 255, 255, 0.15 );
+  border: 1px solid rgba( 255, 255, 255, 0.22 );
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.import-question-total strong {
+  font-size: 31px;
+  line-height: 1;
+}
+.import-question-total span {
+  font-size: 13px;
+  margin-top: 5px;
+}
+/* =========================================================
+   QUESTION LIST
+========================================================= */
+.import-question-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.import-question-card {
+  background: #ffffff;
+  border: 1px solid #e5e9ef;
+  border-radius: 23px;
+  padding: 23px;
+  box-shadow: 0 12px 35px rgba( 35, 60, 90, 0.05 );
+}
+.import-word-page.dark
+.import-question-card {
+  background: #151f2f;
+  border-color: #2b3a50;
+}
+/* =========================================================
+   QUESTION HEADER
+========================================================= */
+.import-question-header {
+  display: grid;
+  grid-template-columns: auto minmax( 0, 1fr ) auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 21px;
+}
+.import-question-number {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: #2563eb;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 800;
+}
+.import-question-type {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  color: #425674;
+}
+.import-question-type svg {
+  color: #2563eb;
+}
+.import-question-type span {
+  font-size: 14px;
+  font-weight: 700;
+}
+.import-question-actions {
+  display: flex;
+  gap: 7px;
+}
+.import-question-actions button {
+  width: 37px;
+  height: 37px;
+  border: none;
+  border-radius: 11px;
+  background: #f1f4f8;
+  color: #56657b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.import-question-actions button:hover {
+  background: #e8edf4;
+}
+.import-question-actions button.danger {
+  background: #fff0f0;
+  color: #d94b4b;
+}
+.import-question-actions button.danger:hover {
+  background: #ffe2e2;
+}
+.import-word-page.dark
+.import-question-type {
+  color: #b7c3d3;
+}
+.import-word-page.dark
+.import-question-actions button {
+  background: #202d3f;
+  color: #aebbc9;
+}
+.import-word-page.dark
+.import-question-actions button.danger {
+  background: #40252c;
+  color: #ff9797;
+}
+/* =========================================================
+   OPTIONS
+========================================================= */
+.import-options-section {
+  margin-top: 20px;
+}
+.import-options-section > label {
+  display: block;
+  color: #58667c;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.import-option-row {
+  display: grid;
+  grid-template-columns: 34px minmax( 0, 1fr ) auto;
+  gap: 9px;
+  align-items: center;
+  margin-bottom: 9px;
+}
+.import-option-row > span {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: #edf4ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+}
+.import-option-row input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #dce3eb;
+  border-radius: 12px;
+  padding: 0 13px;
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  background: #fbfcfe;
+  color: #2b3b52;
+}
+.import-option-row input:focus {
+  border-color: #8ab0ed;
+  box-shadow: 0 0 0 3px rgba( 37, 99, 235, 0.07 );
+}
+.import-option-row button {
+  width: 37px;
+  height: 37px;
+  border: none;
+  border-radius: 10px;
+  background: #fff0f0;
+  color: #d54e4e;
+  cursor: pointer;
+}
+.import-add-option {
+  margin-top: 5px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px dashed #a9c3e7;
+  border-radius: 11px;
+  background: #f6f9ff;
+  color: #2563eb;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.import-word-page.dark
+.import-options-section > label {
+  color: #b4c0cf;
+}
+.import-word-page.dark
+.import-option-row > span {
+  background: #1e3451;
+  color: #8aafff;
+}
+.import-word-page.dark
+.import-option-row input {
+  background: #111b29;
+  border-color: #304056;
+  color: #e8eef6;
+}
+.import-word-page.dark
+.import-add-option {
+  background: #17263a;
+  border-color: #41648d;
+  color: #8db1ff;
+}
+/* =========================================================
+   YES NO + RATING PREVIEW
+========================================================= */
+.import-yesno-preview,
+.import-rating-preview {
+  margin-top: 17px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.import-yesno-preview span,
+.import-rating-preview span {
+  min-height: 39px;
+  padding: 0 14px;
+  border-radius: 11px;
+  background: #f3f7fc;
+  color: #55657c;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.import-rating-preview svg {
+  color: #f2aa25;
+}
+.import-word-page.dark
+.import-yesno-preview span,
+.import-word-page.dark
+.import-rating-preview span {
+  background: #1b293b;
+  color: #b5c1cf;
+}
+/* =========================================================
+   QUESTION SETTINGS
+========================================================= */
+.import-question-settings {
+  margin-top: 21px;
+  padding-top: 17px;
+  border-top: 1px solid #ebeff4;
+  display: flex;
+  gap: 19px;
+  flex-wrap: wrap;
+}
+.import-inline-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #5b697e;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.import-inline-toggle input {
+  accent-color: #2563eb;
+}
+.import-word-page.dark
+.import-question-settings {
+  border-top-color: #2b394e;
+}
+.import-word-page.dark
+.import-inline-toggle {
+  color: #b0bdcc;
+}
+/* =========================================================
+   SCORE SETTINGS
+========================================================= */
+.import-score-settings {
+  margin-top: 17px;
+  padding: 17px;
+  border-radius: 16px;
+  background: #f6f9fe;
+  border: 1px solid #e1e9f4;
+  display: grid;
+  grid-template-columns: minmax( 130px, 0.3fr ) minmax( 0, 1fr );
+  gap: 15px;
+}
+.import-score-settings
+.import-field {
+  margin: 0;
+}
+.import-word-page.dark
+.import-score-settings {
+  background: #111b29;
+  border-color: #2f4057;
+}
+/* =========================================================
+   ADD QUESTION BUTTON
+========================================================= */
+.import-add-question-btn {
+  width: 100%;
+  min-height: 54px;
+  border: 1px dashed #a8c2e7;
+  border-radius: 17px;
+  background: #f5f9ff;
+  color: #2563eb;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  transition: 0.2s ease;
+}
+.import-add-question-btn:hover {
+  background: #ebf3ff;
+  border-color: #7da8e9;
+}
+.import-word-page.dark
+.import-add-question-btn {
+  background: #17263b;
+  color: #8eb3ff;
+  border-color: #41648f;
+}
+/* =========================================================
+   GENERIC DISABLED
+========================================================= */
+.import-word-page input:disabled,
+.import-word-page select:disabled,
+.import-word-page textarea:disabled,
+.import-word-page button:disabled {
+  cursor: not-allowed;
+}
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+.import-word-page ::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+.import-word-page ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.import-word-page ::-webkit-scrollbar-thumb {
+  background: #c8d1dc;
+  border-radius: 999px;
+}
+.import-word-page.dark ::-webkit-scrollbar-thumb {
+  background: #3e4c60;
+}
+/* =========================================================
+   RESPONSIVE — TABLET
+========================================================= */
+@media (
+  max-width: 900px
+) {
+  .import-word-header {
+    grid-template-columns: auto 1fr;
+  }
+  .import-header-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+  .import-tabs {
+    grid-template-columns: repeat( 2, 1fr );
+  }
+  .import-settings-page {
+    grid-template-columns: 1fr;
+  }
+  .import-status-bar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .import-status-bar
+  > div:last-child {
+    justify-content: flex-start;
+  }
+  .import-selected-file {
+    grid-template-columns: auto 1fr auto;
+  }
+  .import-selected-file-result {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+  }
+}
+/* =========================================================
+   RESPONSIVE — MOBILE
+========================================================= */
+@media (
+  max-width: 640px
+) {
+  .import-word-page {
+    padding-bottom: 40px;
+  }
+  .import-word-header {
+    position: relative;
+    padding: 17px 17px;
+    gap: 13px;
+  }
+  .import-back-btn {
+    width: 40px;
+    height: 40px;
+  }
+  .import-header-title h1 {
+    font-size: 22px;
+  }
+  .import-header-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat( 2, minmax( 0, 1fr ) );
+  }
+  .import-header-actions
+  .import-save-btn:only-child {
+    grid-column: 1 / -1;
+  }
+  .import-previous-btn,
+  .import-save-btn {
+    width: 100%;
+    padding: 0 12px;
+  }
+  .import-tabs,
+  .import-status-bar,
+  .import-word-content,
+  .import-settings-page {
+    width: calc( 100% - 28px );
+  }
+  .import-tabs {
+    margin-top: 14px;
+    padding: 6px;
+  }
+  .import-tab {
+    min-height: 52px;
+    padding: 0 8px;
+    font-size: 13px;
+  }
+  .import-tab > svg {
+    display: none;
+  }
+  .import-tab-number {
+    width: 24px;
+    height: 24px;
+  }
+  .import-word-content,
+  .import-settings-page {
+    margin-top: 16px;
+  }
+  .import-word-section {
+    padding: 20px;
+    border-radius: 20px;
+  }
+  .import-section-heading {
+    gap: 12px;
+    margin-bottom: 21px;
+  }
+  .import-section-icon {
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+    border-radius: 13px;
+  }
+  .import-section-heading h2 {
+    font-size: 20px;
+  }
+  .import-drop-zone {
+    min-height: 290px;
+    padding: 32px 17px;
+  }
+  .import-drop-icon {
+    width: 67px;
+    height: 67px;
+    border-radius: 20px;
+    font-size: 32px;
+  }
+  .import-selected-file {
+    grid-template-columns: auto minmax( 0, 1fr ) auto;
+    gap: 12px;
+  }
+  .import-selected-file-icon {
+    width: 47px;
+    height: 47px;
+    border-radius: 14px;
+  }
+  .import-selected-file-result {
+    grid-column: 1 / -1;
+  }
+  .import-schedule-grid {
+    grid-template-columns: 1fr;
+  }
+  .import-radio-grid {
+    grid-template-columns: 1fr;
+  }
+  .import-setting-option {
+    grid-template-columns: auto minmax( 0, 1fr ) auto;
+  }
+  .import-setting-option
+  > input {
+    display: none;
+  }
+  .import-timer-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .import-question-summary {
+    padding: 23px 20px;
+    align-items: flex-start;
+  }
+  .import-question-summary h2 {
+    font-size: 21px;
+  }
+  .import-question-total {
+    min-width: 81px;
+    min-height: 74px;
+  }
+  .import-question-card {
+    padding: 18px;
+    border-radius: 19px;
+  }
+  .import-question-header {
+    grid-template-columns: auto minmax( 0, 1fr );
+  }
+  .import-question-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+  .import-score-settings {
+    grid-template-columns: 1fr;
+  }
+}
+/* =========================================================
+   VERY SMALL MOBILE
+========================================================= */
+@media (
+  max-width: 420px
+) {
+  .import-tabs {
+    grid-template-columns: 1fr 1fr;
+  }
+  .import-tab {
+    justify-content: flex-start;
+    padding: 0 12px;
+  }
+  .import-question-summary {
+    flex-direction: column;
+  }
+  .import-question-total {
+    width: 100%;
+    min-height: 64px;
+    flex-direction: row;
+    gap: 8px;
+  }
+  .import-question-total span {
+    margin-top: 0;
+  }
+  .import-option-row {
+    grid-template-columns: 30px minmax( 0, 1fr ) 34px;
+  }
+  .import-option-row > span {
+    width: 30px;
+    height: 30px;
+  }
+  .import-option-row button {
+    width: 34px;
+    height: 34px;
+  }
+}
+`;
 // =========================================================
 // STORAGE KEYS
 // =========================================================
@@ -130,10 +1871,6 @@ function ImportWord() {
     importedText,
     setImportedText,
   ] = useState("");
-  const [
-    importedFormId,
-    setImportedFormId,
-  ] = useState(null);
   // =========================================================
   // FORM DATA
   // =========================================================
@@ -342,309 +2079,6 @@ function ImportWord() {
           7
         )
         .toLowerCase();
-  };
-  const normalizeImportedApiQuestions = (
-    items = []
-  ) => {
-    return items
-      .map(
-        (
-          item,
-          index
-        ) => {
-          const questionType =
-            String(
-              item?.type ||
-              item?.question_type ||
-              item?.kind ||
-              "short"
-            )
-              .trim()
-              .toLowerCase();
-
-          const normalizedOptions =
-            Array.isArray(
-              item?.options
-            )
-              ? item.options.map(
-                  option =>
-                    typeof option === "object" && option !== null
-                      ? String(option.option_text ?? option.text ?? option.value ?? "").trim()
-                      : String(option ?? "").trim()
-                )
-              : Array.isArray(
-                  item?.choices
-                )
-                ? item.choices.map(
-                    choice =>
-                      typeof choice === "object" && choice !== null
-                        ? String(choice.option_text ?? choice.text ?? choice.value ?? "").trim()
-                        : String(choice ?? "").trim()
-                  )
-                : [];
-
-          const inferredFromOptions =
-            normalizedOptions.length >= 2;
-          const normalizedType =
-            [
-              "multiple",
-              "short",
-              "long",
-              "rating",
-              "yesno",
-              "math",
-              "code",
-            ].includes(
-              questionType
-            )
-              ? questionType
-              : inferredFromOptions
-                ? "multiple"
-                : "short";
-
-          const title =
-            String(
-              item?.title ||
-              item?.question_text ||
-              item?.question ||
-              item?.prompt ||
-              `Question ${index + 1}`
-            ).trim();
-
-          return {
-            id:
-              item?.id ||
-              item?.question_id ||
-              `${Date.now()}-${index}`,
-            title,
-            question: title,
-            type: normalizedType,
-            required:
-              item?.required !==
-              false,
-            scoring:
-              Boolean(
-                item?.scoring ||
-                item?.points > 0 ||
-                item?.grading?.enabled
-              ),
-            points:
-              Math.max(
-                Number(
-                  item?.points ||
-                  item?.grading?.points ||
-                  1
-                ) || 1,
-                1
-              ),
-            correctAnswer:
-              String(
-                item?.correctAnswer ||
-                item?.correct_answer ||
-                item?.grading?.correctAnswer ||
-                ""
-              ).trim(),
-            options:
-              normalizedType ===
-              "yesno"
-                ? [
-                    "Yes",
-                    "No",
-                  ]
-                : normalizedType ===
-                    "multiple" &&
-                  normalizedOptions.length >=
-                    2
-                  ? normalizedOptions
-                  : [],
-            image: "",
-            imageName: "",
-            imageAnswerType: "",
-            imageOptions: [],
-          };
-        }
-      )
-      .filter(
-        (
-          question
-        ) =>
-          question &&
-          String(
-            question.title ||
-            ""
-          ).trim()
-      );
-  };
-
-  const normalizeImportedApiPayload = (
-    payload
-  ) => {
-    const source =
-      payload?.data?.data ??
-      payload?.data ??
-      payload ??
-      {};
-
-    const candidateForm =
-      source.form &&
-      typeof source.form ===
-        "object"
-        ? source.form
-        : source;
-
-    const normalizedQuestions =
-      normalizeImportedApiQuestions(
-        Array.isArray(
-          candidateForm.questions
-        )
-          ? candidateForm.questions
-          : Array.isArray(
-              source.questions
-            )
-            ? source.questions
-            : []
-      );
-
-    if (
-      normalizedQuestions.length ===
-      0
-    ) {
-      return null;
-    }
-
-    return {
-      id:
-        candidateForm.id ||
-        source.id ||
-        null,
-      title:
-        String(
-          candidateForm.title ||
-          source.title ||
-          "Imported Word Form"
-        ).trim(),
-      customLink:
-        String(
-          candidateForm.customLink ||
-          candidateForm.custom_link ||
-          source.customLink ||
-          source.custom_link ||
-          ""
-        ).trim(),
-      questions:
-        normalizedQuestions,
-    };
-  };
-  const buildServerQuestionPayload = (
-    question,
-    index
-  ) => {
-    const questionTypeMap = {
-      multiple: "MULTIPLE_CHOICE",
-      short: "SHORT_TEXT",
-      long: "LONG_TEXT",
-      checkbox: "CHECKBOXES",
-      yesno: "YES_NO",
-      rating: "RATING",
-      math: "MATH",
-      code: "CODE",
-      image: "IMAGE",
-    };
-    const localType = String(
-      question.type || "short"
-    ).toLowerCase();
-    const serverType =
-      questionTypeMap[localType] ||
-      "SHORT_TEXT";
-    const rawOptions =
-      Array.isArray(
-        question.options
-      )
-        ? question.options
-        : [];
-    const options =
-      rawOptions.map(
-        (
-          option,
-          optionIndex
-        ) => {
-          const isPlainString =
-            typeof option ===
-              "string" ||
-            option ===
-              null ||
-            option ===
-              undefined;
-          return {
-            option_text:
-              isPlainString
-                ? String(
-                    option ?? ""
-                  )
-                    .trim()
-                : String(
-                    option?.option_text ??
-                    option?.text ??
-                    option?.value ??
-                    ""
-                  )
-                    .trim(),
-            is_correct:
-              isPlainString
-                ? false
-                : Boolean(
-                    option?.is_correct ??
-                    option?.correct
-                  ),
-            order_index:
-              optionIndex,
-          };
-        }
-      )
-      .filter(
-        (
-          option
-        ) =>
-          String(
-            option.option_text || ""
-          ).trim()
-      );
-    return {
-      question_text:
-        String(
-          question.title ||
-          question.question ||
-          ""
-        ).trim(),
-      question_type:
-        serverType,
-      code_language:
-        question.code_language ||
-        question.language ||
-        "",
-      img_url:
-        String(
-          question.image ||
-          ""
-        ).trim(),
-      is_auto_scored:
-        Boolean(
-          question.scoring
-        ),
-      points:
-        Math.max(
-          Number(
-            question.points
-          ) || 0,
-          0
-        ),
-      order_index:
-        index,
-      is_required:
-        question.required !==
-        false,
-      options,
-    };
   };
   const isCustomLinkUsed = (
     customLink
@@ -872,58 +2306,25 @@ function ImportWord() {
       [];
     let currentQuestion =
       null;
-    let pendingType =
-      null;
     const saveCurrentQuestion =
       () => {
         if (!currentQuestion) {
           return;
         }
-        const rawTitle =
-          String(
+        if (
+          !String(
             currentQuestion.title ||
             ""
-          );
-        const cleanedTitle =
-          rawTitle
-            .replace(
-              /\s*(?:kunci|jawaban|correct\s+answer|jawaban\s+benar|poin|point|points|nilai)\s*[:\-]?\s*(?:[A-D]|\d+)\s*$/i,
-              ""
-            )
-            .trim();
-        if (!cleanedTitle) {
+          ).trim()
+        ) {
           currentQuestion =
             null;
           return;
         }
-        const currentOptions =
-          Array.isArray(
-            currentQuestion.options
-          )
-            ? currentQuestion.options.filter(
-                (option) =>
-                  String(
-                    option || ""
-                  ).trim()
-              )
-            : [];
-        const hasMultipleChoiceText =
-          /(?:^|\s)(?:[A-D]|[1-4])\s*[.)]\s*.+/i.test(
-            cleanedTitle
-          ) ||
-          /(?:^|\s)(?:pilihan|opsi)\s*(?:[A-D]|[1-4])\s*[:\-]/i.test(
-            cleanedTitle
-          );
-        currentQuestion.title =
-          cleanedTitle;
-        currentQuestion.question =
-          cleanedTitle;
-        currentQuestion.options =
-          currentOptions;
         if (
           currentQuestion.type ===
             "multiple" &&
-          currentOptions.length <
+          currentQuestion.options.length <
             2
         ) {
           currentQuestion.type =
@@ -931,80 +2332,11 @@ function ImportWord() {
           currentQuestion.options =
             [];
         }
-        if (
-          (currentOptions.length >= 2 ||
-            hasMultipleChoiceText) &&
-          currentQuestion.type !==
-            "yesno"
-        ) {
-          currentQuestion.type =
-            "multiple";
-        }
         parsedQuestions.push(
           currentQuestion
         );
         currentQuestion =
           null;
-      };
-    const extractInlineMultipleChoice =
-      (
-        value
-      ) => {
-        const text =
-          String(
-            value || ""
-          ).trim();
-        if (!text) {
-          return {
-            title: "",
-            options: [],
-            hasChoices: false,
-          };
-        }
-        const choicePattern =
-          /(?:^|\s)([A-D])\s*[.)]\s*([^A-D]*?)(?=\s+[A-D]\s*[.)]|\s*$)/gi;
-        const matches =
-          [...text.matchAll(
-            choicePattern
-          )];
-        if (
-          matches.length < 2
-        ) {
-          return {
-            title: text,
-            options: [],
-            hasChoices: false,
-          };
-        }
-        const options =
-          matches
-            .map(
-              (
-                match
-              ) =>
-                String(
-                  match[2] || ""
-                )
-                  .trim()
-            )
-            .filter(Boolean);
-        const title =
-          text
-            .replace(
-              choicePattern,
-              " "
-            )
-            .replace(
-              /\s{2,}/g,
-              " "
-            )
-            .trim();
-        return {
-          title,
-          options,
-          hasChoices:
-            options.length >= 2,
-        };
       };
     const detectTypeFromQuestion =
       (
@@ -1040,29 +2372,6 @@ function ImportWord() {
             title:
               text.replace(
                 /^\[LONG\]\s*/i,
-                ""
-              ),
-          };
-        }
-        if (
-          upper.startsWith(
-            "[MULTIPLE]"
-          ) ||
-          upper.startsWith(
-            "[PG]"
-          ) ||
-          upper.startsWith(
-            "[PILIHAN GANDA]"
-          ) ||
-          upper.startsWith(
-            "[MCQ]"
-          )
-        ) {
-          return {
-            type: "multiple",
-            title:
-              text.replace(
-                /^\[(?:MULTIPLE|PG|PILIHAN GANDA|MCQ)\]\s*/i,
                 ""
               ),
           };
@@ -1123,35 +2432,6 @@ function ImportWord() {
               ),
           };
         }
-        const inlineChoice =
-          extractInlineMultipleChoice(
-            text
-          );
-        if (
-          inlineChoice.hasChoices
-        ) {
-          return {
-            type: "multiple",
-            title:
-              inlineChoice.title,
-            options:
-              inlineChoice.options,
-          };
-        }
-        if (
-          /\b(?:PG|PILIHAN GANDA|MULTIPLE CHOICE|MULTIPLECHOICE|MCQ)\b/i.test(
-            text
-          )
-        ) {
-          return {
-            type: "multiple",
-            title:
-              text.replace(
-                /\b(?:PG|PILIHAN GANDA|MULTIPLE CHOICE|MULTIPLECHOICE|MCQ)\b\s*[:\-]?\s*/i,
-                ""
-              ).trim(),
-          };
-        }
         return {
           type: "short",
           title:
@@ -1192,64 +2472,29 @@ function ImportWord() {
                 2
               ]
             );
-          const baseType =
-            pendingType ||
-            detected.type;
-          pendingType =
-            null;
           currentQuestion = {
             ...createQuestionObject(
-              baseType
+              detected.type
             ),
             title:
               detected.title,
             question:
               detected.title,
           };
-          if (
-            detected.options &&
-            detected.options.length >= 2
-          ) {
-            currentQuestion.type =
-              "multiple";
-            currentQuestion.options =
-              detected.options;
-          }
           return;
         }
-        const typeTagMatch =
-          line.match(
-            /^\[(SHORT|LONG|YESNO|RATING|MATH|CODE|MULTIPLE|PG|PILIHAN GANDA|MCQ)\](?:\s*(.+))?$/i
-          );
+        // =====================================================
+        // QUESTION WITH TYPE BUT NO NUMBER
+        // =====================================================
         if (
-          typeTagMatch
+          /^\[(SHORT|LONG|YESNO|RATING|MATH|CODE)\]/i.test(
+            line
+          )
         ) {
           saveCurrentQuestion();
-          const rawTagContent =
-            String(
-              typeTagMatch[
-                2
-              ] || ""
-            ).trim();
-          if (!rawTagContent) {
-            pendingType =
-              String(
-                typeTagMatch[
-                  1
-                ]
-              ).toLowerCase();
-            if (
-              pendingType ===
-                "pg"
-            ) {
-              pendingType =
-                "multiple";
-            }
-            return;
-          }
           const detected =
             detectTypeFromQuestion(
-              rawTagContent
+              line
             );
           currentQuestion = {
             ...createQuestionObject(
@@ -1260,17 +2505,6 @@ function ImportWord() {
             question:
               detected.title,
           };
-          if (
-            detected.options &&
-            detected.options.length >= 2
-          ) {
-            currentQuestion.type =
-              "multiple";
-            currentQuestion.options =
-              detected.options;
-          }
-          pendingType =
-            null;
           return;
         }
         // =====================================================
@@ -1279,101 +2513,33 @@ function ImportWord() {
         // A. Jawaban
         // B) Jawaban
         // =====================================================
-        const labeledOptionMatch =
-          line.match(
-            /^(?:pilihan|opsi)\s*(?:[A-Z]|\d{1,2})\s*[:\-]\s*(.+)$/i
-          );
-        if (
-          labeledOptionMatch &&
-          currentQuestion
-        ) {
-          if (
-            !Array.isArray(
-              currentQuestion.options
-            )
-          ) {
-            currentQuestion.options =
-              [];
-          }
-          currentQuestion.options =
-            currentQuestion.options.filter(
-              (option) =>
-                String(
-                  option || ""
-                ).trim()
-            );
-          if (
-            [
-              "short",
-              "long",
-              "rating",
-              "yesno",
-              "math",
-              "code",
-            ].includes(
-              currentQuestion.type
-            )
-          ) {
-            currentQuestion.type =
-              "multiple";
-          }
-          currentQuestion.options.push(
-            labeledOptionMatch[
-              1
-            ].trim()
-          );
-          return;
-        }
         const optionMatch =
           line.match(
-            /^(?:([A-Z])[.)]|[-*•])\s*(.+)$|^(?:\d+)[.)]\s*(.+)$/i
+            /^([A-Z])[.)]\s+(.+)$/i
           );
         if (
           optionMatch &&
           currentQuestion
         ) {
           if (
-            !Array.isArray(
-              currentQuestion.options
-            )
-          ) {
-            currentQuestion.options =
-              [];
-          }
-          currentQuestion.options =
-            currentQuestion.options.filter(
-              (option) =>
-                String(
-                  option || ""
-                ).trim()
-            );
-          const optionValue =
-            String(
-              optionMatch[2] ||
-              optionMatch[3] ||
-              ""
-            ).trim();
-          if (!optionValue) {
-            return;
-          }
-          if (
-            [
-              "short",
-              "long",
-              "rating",
-              "yesno",
-              "math",
-              "code",
-            ].includes(
-              currentQuestion.type
-            )
+            currentQuestion.type ===
+            "short"
           ) {
             currentQuestion.type =
               "multiple";
+            currentQuestion.options =
+              [];
           }
-          currentQuestion.options.push(
-            optionValue
-          );
+          if (
+            currentQuestion.type ===
+            "multiple"
+          ) {
+            currentQuestion.options.push(
+              optionMatch[
+                2
+              ].trim()
+            );
+          }
           return;
         }
         // =====================================================
@@ -1382,11 +2548,10 @@ function ImportWord() {
         // Kunci: A
         // Jawaban: B
         // Correct Answer: C
-        // Jawaban benar: D
         // =====================================================
         const answerMatch =
           line.match(
-            /^(?:kunci(?:\s+jawaban)?|jawaban(?:\s+benar)?|correct\s+answer|benar)\s*[:\-]?\s*(.+)$/i
+            /^(?:kunci(?:\s+jawaban)?|jawaban|correct\s+answer)\s*:\s*(.+)$/i
           );
         if (
           answerMatch &&
@@ -1502,51 +2667,21 @@ function ImportWord() {
             detectTypeFromQuestion(
               line
             );
-          const baseType =
-            pendingType ||
-            detected.type;
-          pendingType =
-            null;
           currentQuestion = {
             ...createQuestionObject(
-              baseType
+              detected.type
             ),
             title:
               detected.title,
             question:
               detected.title,
           };
-          if (
-            detected.options &&
-            detected.options.length >= 2
-          ) {
-            currentQuestion.type =
-              "multiple";
-            currentQuestion.options =
-              detected.options;
-          }
         } else {
           currentQuestion.title =
             `${currentQuestion.title} ${line}`
               .trim();
           currentQuestion.question =
             currentQuestion.title;
-          const inlineChoice =
-            extractInlineMultipleChoice(
-              currentQuestion.title
-            );
-          if (
-            inlineChoice.hasChoices
-          ) {
-            currentQuestion.type =
-              "multiple";
-            currentQuestion.options =
-              inlineChoice.options;
-            currentQuestion.title =
-              inlineChoice.title;
-            currentQuestion.question =
-              inlineChoice.title;
-          }
         }
       }
     );
@@ -1789,17 +2924,6 @@ function ImportWord() {
           safeTitle
         );
       // ============================================
-      // FETCH API IMPORT (jika backend mendukung)
-      // ============================================
-      let apiImportedPayload = null;
-      try {
-        const apiImportResponse = await importFormFromDocx(file);
-        apiImportedPayload = normalizeImportedApiPayload(apiImportResponse);
-      } catch (apiImportError) {
-        console.warn("API import DOCX gagal, gunakan fallback lokal:", apiImportError);
-      }
-
-      // ============================================
       // PARSE QUESTIONS
       // ============================================
       const parsedQuestions =
@@ -1816,40 +2940,6 @@ function ImportWord() {
         ) ||
         parsedQuestions.length === 0
       ) {
-        if (
-          apiImportedPayload &&
-          Array.isArray(
-            apiImportedPayload.questions
-          ) &&
-          apiImportedPayload.questions.length > 0
-        ) {
-          const apiQuestions = apiImportedPayload.questions;
-          const apiTitle =
-            String(
-              apiImportedPayload.title ||
-              safeTitle
-            ).trim();
-          setFormData(
-            previous => ({
-              ...previous,
-              title: apiTitle,
-              customLink:
-                previous.customLink ||
-                createLinkSlug(apiTitle) ||
-                "imported-form",
-            })
-          );
-          setQuestions(apiQuestions);
-          setImportedText(rawText);
-          setSelectedFile(file);
-          setImportedFormId(
-            apiImportedPayload.id ||
-            null
-          );
-          setImportSuccess(true);
-          setImportError("");
-          return;
-        }
         throw new Error(
           "Tidak ada pertanyaan yang berhasil ditemukan."
         );
@@ -2002,53 +3092,6 @@ function ImportWord() {
       ) {
         generatedLink =
           `${generatedSlug}-${Date.now()}`;
-      }
-
-      if (
-        apiImportedPayload &&
-        Array.isArray(
-          apiImportedPayload.questions
-        ) &&
-        apiImportedPayload.questions.length > 0
-      ) {
-        const apiTitle =
-          String(
-            apiImportedPayload.title ||
-            safeTitle
-          ).trim();
-        const apiLink =
-          String(
-            apiImportedPayload.customLink ||
-            generatedLink
-          ).trim();
-
-        setFormData(
-          previous => ({
-            ...previous,
-            title: apiTitle,
-            customLink:
-              apiLink ||
-              generatedLink,
-          })
-        );
-        setQuestions(
-          apiImportedPayload.questions
-        );
-        setImportedText(
-          rawText
-        );
-        setSelectedFile(
-          file
-        );
-        setImportedFormId(
-          apiImportedPayload.id ||
-          null
-        );
-        setImportSuccess(
-          true
-        );
-        setImportError("");
-        return;
       }
       // ============================================
       // UPDATE FORM
@@ -2919,7 +3962,7 @@ function ImportWord() {
   // SAVE FORM
   // =========================================================
   const handleSave =
-    async () => {
+    () => {
       if (
         !validateUpload() ||
         !validateInfo() ||
@@ -2961,20 +4004,20 @@ function ImportWord() {
           formData.responseDays
         ) ||
         30;
-      const payload = {
+      const savedForm = {
+        id:
+          Date.now(),
         title:
           formData.title
             .trim(),
         description: `Imported from Microsoft Word (${selectedFile?.name || "document.docx"}).`,
-        type: "EXAM",
+        type: "Form",
         category: "Form",
         source: "word-import",
         importedFileName:
           selectedFile?.name ||
           "",
         customLink:
-          normalizedLink,
-        custom_url:
           normalizedLink,
         link: `hidocs.app/r/${normalizedLink}`,
         openDate:
@@ -3010,6 +4053,10 @@ function ImportWord() {
         qrOnly:
           !isPublicForm,
         responses: 0,
+        // =====================================================
+        // INTERNAL ADMIN GRADING
+        // Tidak bergantung pada resultMode user.
+        // =====================================================
         grading: {
           enabled:
             questions.some(
@@ -3034,7 +4081,8 @@ function ImportWord() {
                   Math.max(
                     Number(
                       question.points
-                    ) || 1,
+                    ) ||
+                    1,
                     1
                   )
                 );
@@ -3142,7 +4190,8 @@ function ImportWord() {
                   ? Math.max(
                       Number(
                         question.points
-                      ) || 1,
+                      ) ||
+                      1,
                       1
                     )
                   : 0;
@@ -3182,6 +4231,9 @@ function ImportWord() {
                 required:
                   question.required !==
                   false,
+                // ===============================================
+                // INTERNAL ADMIN SCORING
+                // ===============================================
                 scoring:
                   scoringEnabled,
                 points:
@@ -3201,7 +4253,8 @@ function ImportWord() {
                 image: "",
                 imageName: "",
                 imageAnswerType: "",
-                imageOptions: [],
+                imageOptions:
+                  [],
               };
             }
           ),
@@ -3235,87 +4288,9 @@ function ImportWord() {
           );
           return;
         }
-
-        let savedForm = null;
-        const serverFormId =
-          importedFormId ||
-          null;
-        try {
-          if (serverFormId) {
-            const updatePayload = {
-              title: payload.title,
-              description: payload.description,
-              type: "EXAM",
-              custom_url: normalizedLink,
-              status:
-                formData.activateImmediately
-                  ? "ACTIVE"
-                  : "DRAFT",
-              is_template: false,
-            };
-            const response = await updateForm(serverFormId, updatePayload);
-            const apiForm = response?.data?.data || response?.data || payload;
-            savedForm = {
-              ...payload,
-              ...apiForm,
-              id: serverFormId,
-              customLink:
-                apiForm.customLink ||
-                apiForm.custom_link ||
-                normalizedLink,
-              title:
-                apiForm.title ||
-                payload.title,
-            };
-          } else {
-            const response = await createForm(payload);
-            const apiForm = response?.data?.data || response?.data || payload;
-            const newFormId = apiForm.id || null;
-            if (newFormId) {
-              for (let index = 0; index < questions.length; index += 1) {
-                await addQuestion(
-                  newFormId,
-                  buildServerQuestionPayload(
-                    questions[index],
-                    index
-                  )
-                );
-              }
-            }
-            savedForm = {
-              ...payload,
-              ...apiForm,
-              id:
-                newFormId ||
-                Date.now(),
-              customLink:
-                apiForm.customLink ||
-                apiForm.custom_link ||
-                normalizedLink,
-              title:
-                apiForm.title ||
-                payload.title,
-            };
-          }
-        } catch (apiError) {
-          console.warn("API createForm/updateForm gagal, fallback ke localStorage:", apiError);
-        }
-
-        let finalForm;
-        if (savedForm) {
-          finalForm = savedForm;
-        } else {
-          finalForm = {
-            id:
-              serverFormId ||
-              Date.now(),
-            ...payload,
-          };
-        }
-
         const updatedForms = [
           ...existingForms,
-          finalForm,
+          savedForm,
         ];
         localStorage.setItem(
           FORMS_STORAGE_KEY,
@@ -3326,7 +4301,7 @@ function ImportWord() {
         localStorage.setItem(
           NEW_FORM_STORAGE_KEY,
           JSON.stringify(
-            finalForm
+            savedForm
           )
         );
         window.dispatchEvent(
@@ -3335,7 +4310,7 @@ function ImportWord() {
             {
               detail: {
                 formId:
-                  finalForm.id,
+                  savedForm.id,
               },
             }
           )
@@ -3346,7 +4321,7 @@ function ImportWord() {
             : "Form Word berhasil diimport sebagai QR Code Only."
         );
         navigate(
-          "/creator/forms",
+          "/admin/forms",
           {
             replace: true,
           }
@@ -3360,8 +4335,7 @@ function ImportWord() {
           "Form gagal disimpan."
         );
       }
-    };
-
+  };
   // =========================================================
   // RENDER TOGGLE
   // =========================================================
@@ -4049,65 +5023,30 @@ Poin: 3
   // QUESTIONS TAB
   // =========================================================
   const renderQuestionsTab =
-    () => {
-      try {
-        if (
-          !Array.isArray(
-            questions
-          ) ||
-          questions.length ===
-          0
-        ) {
-          return (
-            <div className="import-word-content">
-              <section className="import-question-summary">
-                <div>
-                  <span>Step 4</span>
-                  <h2>Review Imported Questions</h2>
-                  <p>Check the questions detected from Word before saving your form.</p>
-                </div>
-                <div className="import-question-total">
-                  <strong>0</strong>
-                  <span>Questions</span>
-                </div>
-              </section>
-              <div className="import-word-section" style={{ textAlign: 'center', padding: '60px 20px' }}>
-                <FaQuestionCircle style={{ fontSize: '48px', opacity: 0.3, marginBottom: '20px' }} />
-                <p style={{ color: '#999', marginBottom: '10px' }}>
-                  No questions were detected from your Word document.
-                </p>
-                <p style={{ color: '#999', fontSize: '13px' }}>
-                  Make sure your document contains numbered questions or use type tags like [SHORT], [MULTIPLE], etc.
-                </p>
-              </div>
-            </div>
-          );
-        }
-
-        return (
-          <div className="import-word-content">
-            <section className="import-question-summary">
-              <div>
-                <span>
-                  Step 4
-                </span>
-                <h2>
-                  Review Imported Questions
-                </h2>
-                <p>
-                  Check the questions detected from Word before saving your form.
-                </p>
-              </div>
-              <div className="import-question-total">
-                <strong>
-                  {questions.length}
-                </strong>
-                <span>
-                  Questions
-                </span>
-              </div>
-            </section>
-            <div className="import-question-list">
+    () => (
+      <div className="import-word-content">
+        <section className="import-question-summary">
+          <div>
+            <span>
+              Step 4
+            </span>
+            <h2>
+              Review Imported Questions
+            </h2>
+            <p>
+              Check the questions detected from Word before saving your form.
+            </p>
+          </div>
+          <div className="import-question-total">
+            <strong>
+              {questions.length}
+            </strong>
+            <span>
+              Questions
+            </span>
+          </div>
+        </section>
+        <div className="import-question-list">
           {questions.map(
             (
               question,
@@ -4510,24 +5449,8 @@ Poin: 3
           <FaPlus />
           Add Question Manually
         </button>
-        
-          </div>
-        );
-      } catch (error) {
-        console.error('Error rendering questions tab:', error);
-        return (
-          <div className="import-word-content">
-            <div className="import-word-section" style={{ textAlign: 'center', padding: '60px 20px' }}>
-              <FaExclamationTriangle style={{ fontSize: '48px', color: '#dc2626', marginBottom: '20px' }} />
-              <h3 style={{ marginTop: 0 }}>Error Loading Questions</h3>
-              <p style={{ color: '#999' }}>
-                There was an error displaying your questions. Please refresh and try again.
-              </p>
-            </div>
-          </div>
-        );
-      }
-  };
+      </div>
+  );
   // =========================================================
   // IMPORT SUMMARY
   // =========================================================
@@ -4569,6 +5492,7 @@ Poin: 3
           : "import-word-page"
       }
     >
+      <style>{importWordStyles}</style>
       {/* =====================================================
           HEADER
       ===================================================== */}
@@ -4578,7 +5502,7 @@ Poin: 3
           className="import-back-btn"
           onClick={() =>
             navigate(
-              "/creator"
+              "/admin"
             )
           }
         >
