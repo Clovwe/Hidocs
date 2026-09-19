@@ -5,3 +5,5 @@ node_modules/
 /alur
 /frontend/android/READ.md
 /github
+*.env
+backend/.env

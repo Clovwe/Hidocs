@@ -1,0 +1,42 @@
+name: Deploy Backend & Database Hidocs to VPS
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy ke VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            # Make Directory for Hidocs
+            mkdir -p /root/hidocs
+            cd /root/hidocs
+
+            # Clone Repository or Pull latest changes
+            if [ ! -d ".git" ]; then
+              git clone https://github.com/VirzaPixel/Hidocs.git .
+            else
+              git pull origin main
+            fi
+
+            # Write .env file
+            cat << 'EOF' > .env
+            ${{ secrets.ENV_FILE }}
+            EOF
+
+            # Build and Run Docker Compose
+            docker compose up -d --build

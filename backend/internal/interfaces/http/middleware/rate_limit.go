@@ -75,7 +75,7 @@ func RateLimiter(requestsPerMinute int) gin.HandlerFunc {
 
 		if client.count >= requestsPerMinute {
 			rateMu.Unlock()
-			response.Error(c, http.StatusTooManyRequests, "Rate limit exceeded. Please try again later.", nil)
+			response.Error(c, http.StatusTooManyRequests, "Terlalu banyak permintaan. Silakan coba beberapa saat lagi.", nil)
 			c.Abort()
 			return
 		}

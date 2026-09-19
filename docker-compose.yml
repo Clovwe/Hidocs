@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  # Service Backend Golang
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "${APP_PORT}:8080"
+    env_file:
+      - .env
+    depends_on:
+      - postgres-db
+    restart: always
+
+  # Service PostgreSQL Hidocs
+  postgres-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - hidocs_postgres_data:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  hidocs_postgres_data:

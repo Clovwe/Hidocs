@@ -71,8 +71,9 @@ func SetupRouter(cfg *RouterConfig) *gin.Engine {
 			public.POST("/responses/:response_id/acknowledge-warning", cfg.ResponseHandler.AcknowledgeWarning)
 		}
 
-		// 2. Authentication & OTP Verification
+		// 2. Authentication & OTP Verification (Strict Rate Limiting: max 10 requests per minute per IP)
 		auth := api.Group("/auth")
+		auth.Use(middleware.RateLimiter(10))
 		{
 			auth.POST("/register", cfg.AuthHandler.Register)
 			auth.POST("/verify-otp", cfg.AuthHandler.VerifyOTP)
